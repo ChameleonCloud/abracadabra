@@ -9,6 +9,7 @@ import sys
 
 from fabric import api as fapi
 from fabric import context_managers as fcm
+import ulid
 
 from ccmanage import auth
 from ccmanage.lease import Lease
@@ -22,6 +23,9 @@ import whatsnew
 PY3 = sys.version_info.major >= 3
 if not PY3:
     raise RuntimeError('Python 2 not supported.')
+
+
+LATEST = 'latest'
 
 
 def run(command, **kwargs):
@@ -102,6 +106,7 @@ def do_build(ip, repodir, revision, variant='base'):
     checksum = remote.run('md5sum {output_file}'.format(output_file=output_file)).split()[0].strip()
 
     return {
+        'variant': variant,
         'image_loc': output_file,
         'base_image_rev': revision,
         'repo_commit': head,
@@ -114,39 +119,23 @@ def do_upload(ip, rc, **build_results):
 
     ham_auth = Auth(rc)
 
-    image = glance.image_create(auth, 'image-{}'.format(image_rev), extra={
+    image = glance.image_create(ham_auth, 'image-centos7-{}'.format(ulid.ulid()), extra={
+        'build-variant': build_results['variant'],
         'build-os': 'centos7',
         'build-os-revision': build_results['base_image_rev'],
         'build-repo': 'https://github.com/ChameleonCloud/CC-CentOS7',
         'build-repo-commit': build_results['repo_commit'],
     })
 
-    upload_command = glance.image_upload_curl(auth, image['id'], build_results['image_loc'])
+    upload_command = glance.image_upload_curl(ham_auth, image['id'], build_results['image_loc'])
     out = remote.run(upload_command)
-    image_data = glance.image(auth, image['id'])
+    image_data = glance.image(ham_auth, image['id'])
 
     if build_results['checksum'] != image_data['checksum']:
         raise RuntimeError('checksum mismatch! build: {} vs glance: {}'.format(
             repr(build_results['checksum']),
             repr(image_data['checksum']),
         ))
-
-    # with fcm.shell_env(**rc):#, fapi.cd('/home/cc/build'):
-    #     out = remote.run(('glance image-create '
-    #                    '--name "image-{}" '
-    #                    '--disk-format qcow2 '
-    #                    '--container-format bare '
-    #                    '--file {}').format(image_rev, image_loc))
-    #
-    # image_data = {}
-    # for line in out.splitlines():
-    #     parts = [p.strip() for p in line.strip(' |\n\t').split('|')]
-    #     if len(parts) != 2:
-    #         continue
-    #     key, value = parts
-    #     if key == 'Property':
-    #         continue
-    #     image_data[key] = value
 
     return image_data
 
@@ -165,18 +154,26 @@ def main(argv=None):
         help='Name or ID of image to launch.')
     parser.add_argument('--no-clean', action='store_true',
         help='Do not clean up on failure.')
-    parser.add_argument('centos_revision', type=str,
-        help='CentOS 7 revision to use')
+    parser.add_argument('--automated', action='store_true',
+        help='Skip interactive parts')
+    parser.add_argument('--centos-revision', type=str,
+        help='CentOS 7 revision to use', default=LATEST)
+    # parser.add_argument('--force', action='store_true',
+    #     help='Only build if the variant revision isn\'t already in Glance')
     parser.add_argument('build_repo', type=str,
         help='Path of repo to push and build.')
 
     args = parser.parse_args()
     session, rc = auth.session_from_args(args, rc=True)
 
-    available_revs = sorted(i['revision'] for i in whatsnew.image_index().values())
-    if args.centos_revision not in available_revs:
-        print('Requested revision "{}" not found. Available revisions: {}'.format(args.centos_revision, available_revs), file=sys.stderr)
-        return 1
+    if args.centos_revision == LATEST:
+        args.centos_revision = whatsnew.newest_image()['revision']
+        print('Latest CentOS 7 cloud image revision: {}'.format(args.centos_revision))
+    else:
+        available_revs = sorted(i['revision'] for i in whatsnew.image_index().values())
+        if args.centos_revision not in available_revs:
+            print('Requested revision "{}" not found. Available revisions: {}'.format(args.centos_revision, available_revs), file=sys.stderr)
+            return 1
 
     print('Lease: creating...')
     with Lease(session, node_type=args.node_type, _no_clean=args.no_clean) as lease:
@@ -190,10 +187,15 @@ def main(argv=None):
         server.associate_floating_ip()
         print(' - bound ip {} to server.'.format(server.ip))
 
-        build_results = do_build(server.ip, args.build_repo)
-        glance_results = do_upload(server.ip, rc, **build_results)
+        build_results = do_build(server.ip, args.build_repo, args.centos_revision)
+        pprint(build_results)
 
+        glance_results = do_upload(server.ip, rc, **build_results)
         pprint(glance_results)
+
+        if args.automated:
+            # done, skip the manual test stuff.
+            return
 
         input('paused. continue to rebuild instance with new image. (server at {})'.format(server.ip))
 
