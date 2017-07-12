@@ -1,0 +1,4 @@
+*.py[cod]
+*.log
+Untitled*.ipynb
+.python-version
