@@ -1,7 +1,7 @@
 Fabric3
 -e git+https://github.com/ChameleonCloud/hammers#egg=hammers
 paramiko
--e git+https://github.com/openstack/python-blazarclient#egg=python-blazarclient
+-e git+https://github.com/openstack/python-blazarclient@a3448e55107c77d3bbeb8914005b31783127ab34#egg=python-blazarclient
 python-glanceclient
 python-novaclient>=7.1.0,<8.0.0 # still with floating ip management
 requests
