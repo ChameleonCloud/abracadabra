@@ -24,13 +24,13 @@ pip install -r requirements.txt >> pip.log
 
 pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
 
-rm -rf CC-CentOS7
-git clone https://github.com/ChameleonCloud/CC-CentOS7.git CC-CentOS7
+rm -rf CC-Ubuntu16.04
+git clone https://github.com/ChameleonCloud/CC-Ubuntu16.04.git CC-Ubuntu16.04
 
 # check the keypair exists
 nova keypair-show default > /dev/null
 
 python ccbuild.py \
   --automated \
-  --centos-revision latest \
-  CC-CentOS7
+  --ubuntu-release xenial \
+  CC-Ubuntu16.04

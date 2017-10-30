@@ -57,6 +57,27 @@ def centos7():
     return newest_image()
 
 
+# https://github.com/openstack/diskimage-builder/blob/master/diskimage_builder/elements/ubuntu/root.d/10-cache-ubuntu-tarball#L23
+# automatically gets most recent **daily** cloud-image from https://cloud-images.ubuntu.com/xenial/current/
+# but the most recent in the parent directory seems to be what it is.
+UBUNTU_SERVER = 'https://cloud-images.ubuntu.com/'
+PATH_UBUNTU14 = UBUNTU_SERVER + 'trusty/'
+PATH_UBUNTU16 = UBUNTU_SERVER + 'xenial/'
+
+def newest_ubuntu(release):
+    '''
+    Returns the latest version of the Ubuntu 16.04 cloud image.
+    '''
+    assert release in {'trusty', 'xenial'}
+    revision = 'unknown'
+    response = requests.get('{}{}/current/unpacked/build-info.txt'.format(UBUNTU_SERVER, release))
+    for line in response.text.splitlines():
+        if line.startswith('serial='):
+            revision = line.split('=', 1)[1].strip()
+
+    return {'revision': revision}
+
+
 def cuda8():
     ...
 
@@ -65,7 +86,9 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    centos7()
+    print(centos7())
+    print(newest_ubuntu1604())
+
 
 
 if __name__ == '__main__':

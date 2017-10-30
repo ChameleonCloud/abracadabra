@@ -24,7 +24,7 @@ PY3 = sys.version_info.major >= 3
 if not PY3:
     raise RuntimeError('Python 2 not supported.')
 
-
+BUILD_TAG = os.environ.get('BUILD_TAG', 'imgbuild-{}'.format(ulid.ulid()))
 LATEST = 'latest'
 
 
@@ -48,7 +48,7 @@ def get_local_rev(path):
     return head
 
 
-def do_build(ip, repodir, revision, variant='base'):
+def do_build(ip, repodir, revision, *, variant='base'):
     if not revision.strip():
         raise ValueError('must provide revision to use')
 
@@ -119,12 +119,13 @@ def do_upload(ip, rc, **build_results):
 
     ham_auth = Auth(rc)
 
-    image = glance.image_create(ham_auth, 'image-centos7-{}'.format(ulid.ulid()), extra={
+    image = glance.image_create(ham_auth, 'image-centos7-{}'.format(BUILD_TAG), extra={
         'build-variant': build_results['variant'],
-        'build-os': 'centos7',
+        'build-os': build_results['os'],
         'build-os-revision': build_results['base_image_rev'],
-        'build-repo': 'https://github.com/ChameleonCloud/CC-CentOS7',
+        'build-repo': build_results['repo_location'],
         'build-repo-commit': build_results['repo_commit'],
+        'build-tag': BUILD_TAG,
     })
 
     upload_command = glance.image_upload_curl(ham_auth, image['id'], build_results['image_loc'])
@@ -157,38 +158,69 @@ def main(argv=None):
     parser.add_argument('--automated', action='store_true',
         help='Skip interactive parts')
     parser.add_argument('--centos-revision', type=str,
-        help='CentOS 7 revision to use', default=LATEST)
+        help='CentOS 7 revision to use. Defaults to latest.')
+    parser.add_argument('--ubuntu-release', type=str,
+        help='Build an Ubuntu image from provided release. Don\'t combine '
+             'with --centos-revision', choices=['trusty', 'xenial'])
     # parser.add_argument('--force', action='store_true',
     #     help='Only build if the variant revision isn\'t already in Glance')
+    parser.add_argument('--variant', type=str, default='base',
+        help='Image variant to build.')
     parser.add_argument('build_repo', type=str,
         help='Path of repo to push and build.')
 
     args = parser.parse_args()
     session, rc = auth.session_from_args(args, rc=True)
 
-    if args.centos_revision == LATEST:
-        args.centos_revision = whatsnew.newest_image()['revision']
-        print('Latest CentOS 7 cloud image revision: {}'.format(args.centos_revision))
+    if args.centos_revision and args.ubuntu_release:
+        print('Only specify Ubuntu or CentOS options.', file=sys.stderr)
+        return 1
+    elif args.ubuntu_release:
+        build_centos = False
+        image_revision = whatsnew.newest_ubuntu(args.ubuntu_release)['revision']
     else:
-        available_revs = sorted(i['revision'] for i in whatsnew.image_index().values())
-        if args.centos_revision not in available_revs:
-            print('Requested revision "{}" not found. Available revisions: {}'.format(args.centos_revision, available_revs), file=sys.stderr)
-            return 1
+        build_centos = True
+        image_revision = args.centos_revision if args.centos_revision else LATEST
+
+    if build_centos:
+        os_slug = 'centos7'
+        repo_location = 'https://github.com/ChameleonCloud/CC-CentOS7'
+
+        if image_revision == LATEST:
+            image_revision = whatsnew.newest_image()['revision']
+            print('Latest CentOS 7 cloud image revision: {}'.format(image_revision))
+        else:
+            available_revs = sorted(i['revision'] for i in whatsnew.image_index().values())
+            if args.centos_revision not in available_revs:
+                print('Requested revision "{}" not found. Available revisions: {}'.format(image_revision, available_revs), file=sys.stderr)
+                return 1
+    else:
+        os_slug = 'ubuntu-{}'.format(args.ubuntu_release)
+        number = {'trusty': '14.04', 'xenial': '16.04'}[args.ubuntu_release]
+        repo_location = 'https://github.com/ChameleonCloud/CC-Ubuntu{}'.format(number)
+
+        name = '{} ({})'.format(number, args.ubuntu_release.capitalize())
+        print('Latest Ubuntu {} cloud image revision: {}'.format(name, image_revision))
 
     print('Lease: creating...')
-    with Lease(session, node_type=args.node_type, _no_clean=args.no_clean) as lease:
+    lease_name = 'lease-{}'.format(BUILD_TAG)
+    server_name = 'instance-{}'.format(BUILD_TAG)
+    with Lease(session, name=lease_name, node_type=args.node_type, _no_clean=args.no_clean) as lease:
         print(' - started {}'.format(lease))
 
         print('Server: creating...')
-        server = lease.create_server(key=args.key_name, image=args.builder_image)
+        server = lease.create_server(name=server_name, key=args.key_name, image=args.builder_image)
         print(' - building...')
         server.wait()
         print(' - started {}...'.format(server))
         server.associate_floating_ip()
         print(' - bound ip {} to server.'.format(server.ip))
 
-        build_results = do_build(server.ip, args.build_repo, args.centos_revision)
+        build_results = do_build(server.ip, args.build_repo, image_revision, variant=args.variant)
         pprint(build_results)
+
+        build_results['repo_location'] = repo_location
+        build_results['os'] = os_slug
 
         glance_results = do_upload(server.ip, rc, **build_results)
         pprint(glance_results)
