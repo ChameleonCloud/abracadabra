@@ -1,6 +1,7 @@
 import argparse
 import functools
 import io
+import json
 import os
 from pprint import pprint
 import shlex
@@ -48,7 +49,7 @@ def get_local_rev(path):
     return head
 
 
-def do_build(ip, repodir, revision, *, variant='base'):
+def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
     if not revision.strip():
         raise ValueError('must provide revision to use')
 
@@ -72,11 +73,10 @@ def do_build(ip, repodir, revision, *, variant='base'):
         raise RuntimeError()
 
     # checkout local rev on remote
-    head = get_local_rev(repodir)
     remote.run('rm -rf ~/build', quiet=True)
     remote.run('git clone ~/build.git ~/build', quiet=True)
     with fapi.cd('/home/cc/build'):
-        remote.run('git -c advice.detachedHead=false checkout {head}'.format(head=head))
+        remote.run('git -c advice.detachedHead=false checkout {head}'.format(head=commit))
         remote.run('ls -a')
 
     out = io.StringIO()
@@ -84,11 +84,17 @@ def do_build(ip, repodir, revision, *, variant='base'):
     # install build reqs
     remote.run('sudo bash ~/build/install-reqs.sh', pty=True, capture_buffer_size=10000, stdout=out)
 
-    # do build
+    env = {
+        'DIB_CC_PROVENANCE': json.dumps(metadata),
+    }
+    # there's a lot of output and it can do strange things if we don't
+    # use a buffer or file or whatever
     out = io.StringIO()
-    with fapi.cd('/home/cc/build/'):
-    #     out = fapi.run('bash create-image.sh', pty=False, quiet=True)
-        remote.run('python create-image.py --revision {revision} {variant}'.format(revision=revision, variant=variant), pty=True, capture_buffer_size=10000, stdout=out)
+    with fapi.cd('/home/cc/build/'), fcm.shell_env(**env):
+        cmd = 'python create-image.py --revision {revision} {variant}'.format(
+            revision=revision, variant=variant)
+        # DO THE THING
+        remote.run(cmd, pty=True, capture_buffer_size=10000, stdout=out)
 
     with open('build.log', 'w') as f:
         print(f.write(out.getvalue()))
@@ -106,27 +112,21 @@ def do_build(ip, repodir, revision, *, variant='base'):
     checksum = remote.run('md5sum {output_file}'.format(output_file=output_file)).split()[0].strip()
 
     return {
-        'variant': variant,
         'image_loc': output_file,
-        'base_image_rev': revision,
-        'repo_commit': head,
         'checksum': checksum,
     }
 
 
-def do_upload(ip, rc, **build_results):
+def do_upload(ip, rc, metadata, **build_results):
     remote = RemoteControl(ip=ip)
 
     ham_auth = Auth(rc)
 
-    image = glance.image_create(ham_auth, 'image-centos7-{}'.format(BUILD_TAG), extra={
-        'build-variant': build_results['variant'],
-        'build-os': build_results['os'],
-        'build-os-revision': build_results['base_image_rev'],
-        'build-repo': build_results['repo_location'],
-        'build-repo-commit': build_results['repo_commit'],
-        'build-tag': BUILD_TAG,
-    })
+    image = glance.image_create(
+        ham_auth,
+        'image-{}-{}'.format(metadata['build-os'], metadata['build-tag']),
+        extra=metadata,
+    )
 
     upload_command = glance.image_upload_curl(ham_auth, image['id'], build_results['image_loc'])
     out = remote.run(upload_command)
@@ -202,6 +202,17 @@ def main(argv=None):
         name = '{} ({})'.format(number, args.ubuntu_release.capitalize())
         print('Latest Ubuntu {} cloud image revision: {}'.format(name, image_revision))
 
+    commit = get_local_rev(args.build_repo)
+    metadata = {
+        'build-variant': args.variant,
+        'build-os': os_slug,
+        'build-os-base-image-revision': image_revision,
+        'build-repo': repo_location,
+        'build-repo-commit': commit,
+        'build-tag': BUILD_TAG,
+    }
+    pprint(metadata)
+
     print('Lease: creating...')
     lease_name = 'lease-{}'.format(BUILD_TAG)
     server_name = 'instance-{}'.format(BUILD_TAG)
@@ -216,13 +227,10 @@ def main(argv=None):
         server.associate_floating_ip()
         print(' - bound ip {} to server.'.format(server.ip))
 
-        build_results = do_build(server.ip, args.build_repo, image_revision, variant=args.variant)
+        build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant)
         pprint(build_results)
 
-        build_results['repo_location'] = repo_location
-        build_results['os'] = os_slug
-
-        glance_results = do_upload(server.ip, rc, **build_results)
+        glance_results = do_upload(server.ip, rc, metadata, **build_results)
         pprint(glance_results)
 
         if args.automated:
