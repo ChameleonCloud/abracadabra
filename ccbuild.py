@@ -1,4 +1,5 @@
 import argparse
+import base64
 import functools
 import io
 import json
@@ -85,7 +86,8 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
     remote.run('sudo bash ~/build/install-reqs.sh', pty=True, capture_buffer_size=10000, stdout=out)
 
     env = {
-        'DIB_CC_PROVENANCE': json.dumps(metadata),
+        # shell_env doesn't do escaping; quotes get mangled. base64 skips that.
+        'DIB_CC_PROVENANCE': base64.b64encode(json.dumps(metadata).encode('ascii')).decode('ascii'),
     }
     # there's a lot of output and it can do strange things if we don't
     # use a buffer or file or whatever
