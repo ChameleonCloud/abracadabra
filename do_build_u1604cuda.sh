@@ -1,6 +1,8 @@
 #!/bin/bash
 set -o errexit
 
+NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
+
 # my dev machine doesn't accept python3.6, but IUS only installed python3.6
 # could symlink it on Jenkins, but this is maybe less disruptive.
 if command -v python3 >/dev/null 2>&1
@@ -33,6 +35,7 @@ nova keypair-show default > /dev/null
 python ccbuild.py \
   --automated \
   --ubuntu-release xenial \
-  --node-type gpu_p100 \
+  --builder-image CC-Ubuntu16.04 \
+  --node-type $NODE_TYPE \
   --variant gpu \
   CC-Ubuntu16.04
