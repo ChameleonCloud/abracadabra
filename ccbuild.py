@@ -91,7 +91,6 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
     }
     # there's a lot of output and it can do strange things if we don't
     # use a buffer or file or whatever
-    out = io.StringIO()
     with fapi.cd('/home/cc/build/'), fcm.shell_env(**env):
         cmd = 'python create-image.py --revision {revision} {variant}'.format(
             revision=revision, variant=variant)
