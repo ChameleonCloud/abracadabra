@@ -92,8 +92,18 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
     # there's a lot of output and it can do strange things if we don't
     # use a buffer or file or whatever
     with fapi.cd('/home/cc/build/'), fcm.shell_env(**env):
-        cmd = 'python create-image.py --revision {revision} {variant}'.format(
-            revision=revision, variant=variant)
+        # generate release option for trusty/xenial
+        if metadata['build-os'].startswith('ubuntu'):
+            ubuntu_release = metadata['build-os'].split('-')[1]
+            release = '--release {}'.format(ubuntu_release)
+        else:
+            release = ''
+
+        cmd = 'python create-image.py --revision {revision} {release} {variant}'.format(
+            revision=revision,
+            release=release,
+            variant=variant,
+        )
         # DO THE THING
         remote.run(cmd, pty=True, capture_buffer_size=10000, stdout=out)
 
@@ -198,7 +208,7 @@ def main(argv=None):
     else:
         os_slug = 'ubuntu-{}'.format(args.ubuntu_release)
         number = {'trusty': '14.04', 'xenial': '16.04'}[args.ubuntu_release]
-        repo_location = 'https://github.com/ChameleonCloud/CC-Ubuntu{}'.format(number)
+        repo_location = 'https://github.com/ChameleonCloud/CC-Ubuntu16.04'
 
         name = '{} ({})'.format(number, args.ubuntu_release.capitalize())
         print('Latest Ubuntu {} cloud image revision: {}'.format(name, image_revision))
