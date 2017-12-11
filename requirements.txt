@@ -9,5 +9,7 @@ ulid
 
 # dev/deploy
 invoke
+pylint
+pytest
 twine
 wheel

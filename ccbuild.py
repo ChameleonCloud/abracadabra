@@ -177,6 +177,8 @@ def main(argv=None):
     #     help='Only build if the variant revision isn\'t already in Glance')
     parser.add_argument('--variant', type=str, default='base',
         help='Image variant to build.')
+    parser.add_argument('--glance-info', type=str,
+        help='Dump a JSON to this path with the Glance info in it')
     parser.add_argument('build_repo', type=str,
         help='Path of repo to push and build.')
 
@@ -243,6 +245,10 @@ def main(argv=None):
 
         glance_results = do_upload(server.ip, rc, metadata, **build_results)
         pprint(glance_results)
+
+        if args.glance_info:
+            with open(args.glance_info, 'w') as f:
+                json.dump(glance_results, f)
 
         if args.automated:
             # done, skip the manual test stuff.

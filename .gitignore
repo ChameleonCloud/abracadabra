@@ -2,3 +2,4 @@
 *.log
 Untitled*.ipynb
 .python-version
+.cache
