@@ -109,16 +109,20 @@ def server(request, keystone, image):
             ) as lease:
         print(' - started {}'.format(lease))
 
-        print('Server: creating...')
-        server = lease.create_server(name=server_name, key=ssh_key_name, image=image['id'])
-        print(' - building...')
-        server.wait()
-        print(' - started {}...'.format(server))
-        server.associate_floating_ip()
-        print(' - bound ip {} to server.'.format(server.ip))
-        print('waiting for remote to start')
-        wait(server.ip, username='cc', private_key_file=ssh_key_file)
-        print('remote contactable!')
+        try:
+            print('Server: creating...')
+            server = lease.create_server(name=server_name, key=ssh_key_name, image=image['id'])
+            print(' - building...')
+            server.wait()
+            print(' - started {}...'.format(server))
+            server.associate_floating_ip()
+            print(' - bound ip {} to server.'.format(server.ip))
+            print('waiting for remote to start')
+            wait(server.ip, username='cc', private_key_file=ssh_key_file)
+            print('remote contactable!')
+        except Exception as e:
+            # fatal problem, abort trying to do anything
+            pytest.exit('Problem starting server: {}'.format(e))
 
         yield server
 

@@ -21,7 +21,6 @@
 ## Examples
 
 ```
-pytest testwfilters.py --image=CC-Ubuntu16.04-CUDA8
-pytest testwfilters.py --image=CC-Ubuntu16.04-CUDA8 -s
-pytest tests.py --image=CC-CentOS7
+pytest --image=CC-CentOS7
+pytest --image=CC-Ubuntu16.04-CUDA8
 ```
