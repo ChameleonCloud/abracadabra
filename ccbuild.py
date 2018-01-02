@@ -65,8 +65,16 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
     print(out)
 
     # push to remote
+    # GIT_SSH_COMMAND setup (requires Git 2.3.0+, CentOS repos have ~1.8)
+    git_ssh_args = [
+        '-o UserKnownHostsFile=/dev/null',
+        '-o StrictHostKeyChecking=no',
+    ]
+    ssh_key_file = os.environ.get('SSH_KEY', None)
+    if ssh_key_file:
+        git_ssh_args.append('-i {}'.format(ssh_key_file))
     proc = run('git push --all ssh://cc@{ip}/~/build.git'.format(ip=ip), cwd=repodir, env={
-        'GIT_SSH_COMMAND': 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
+        'GIT_SSH_COMMAND': 'ssh {}'.format(' '.join(git_ssh_args)),
     })
     print(proc.stdout)
     print(proc.stderr)
