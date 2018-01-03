@@ -24,8 +24,22 @@ pip install -r requirements.txt >> pip.log
 
 pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
 
-rm -rf CC-Ubuntu16.04
-git clone https://github.com/ChameleonCloud/CC-Ubuntu16.04.git CC-Ubuntu16.04
+LOCAL_REPO=CC-Ubuntu16.04
+REMOTE_REPO=https://github.com/ChameleonCloud/CC-Ubuntu16.04.git
+
+if [ -d $LOCAL_REPO ]
+then
+  OLD_HEAD=$(git -C $LOCAL_REPO rev-parse HEAD)
+  rm -rf $LOCAL_REPO
+  git clone $REMOTE_REPO $LOCAL_REPO
+  echo '          Changes'
+  echo '=============================='
+  git -C CC-Ubuntu16.04 log ${OLD_HEAD}..
+
+else
+  git clone $REMOTE_REPO $LOCAL_REPO
+fi
+
 
 # check the keypair exists
 nova keypair-show default > /dev/null
@@ -33,4 +47,4 @@ nova keypair-show default > /dev/null
 python ccbuild.py \
   --automated \
   --ubuntu-release xenial \
-  CC-Ubuntu16.04
+  $LOCAL_REPO
