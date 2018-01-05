@@ -32,14 +32,15 @@ then
   OLD_HEAD=$(git -C $LOCAL_REPO rev-parse HEAD)
   rm -rf $LOCAL_REPO
   git clone $REMOTE_REPO $LOCAL_REPO
-  echo '          Changes'
-  echo '=============================='
+  {
+    echo '          Changes'
+    echo '=============================='
+  } 2> /dev/null # suppress trace https://superuser.com/a/1141026/18931
   git -C CC-Ubuntu16.04 log ${OLD_HEAD}..
 
 else
   git clone $REMOTE_REPO $LOCAL_REPO
 fi
-
 
 # check the keypair exists
 nova keypair-show default > /dev/null
