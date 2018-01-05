@@ -28,7 +28,10 @@ else
 fi
 
 $PY3 -m venv venv3
+
+set +o nounset
 source venv3/bin/activate
+set -o nounset
 
 set -o xtrace
 
