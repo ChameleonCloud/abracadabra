@@ -1,5 +1,6 @@
 #!/bin/bash
 set -o errexit
+set -o nounset
 
 # my dev machine doesn't accept python3.6, but IUS only installed python3.6
 # could symlink it on Jenkins, but this is maybe less disruptive.
@@ -45,7 +46,11 @@ fi
 # check the keypair exists
 nova keypair-show default > /dev/null
 
-python ccbuild.py \
-  --automated \
-  --ubuntu-release trusty \
-  $LOCAL_REPO
+BUILD_ARGS='--automated '
+BUILD_ARGS+='--ubuntu-release trusty '
+
+if ! [ -z ${EXISTING_LEASE:+x} ]; then
+  BUILD_ARGS+='--use-lease $EXISTING_LEASE '
+fi
+
+python ccbuild.py $BUILD_ARGS $LOCAL_REPO

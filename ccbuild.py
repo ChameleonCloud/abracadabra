@@ -168,6 +168,9 @@ def main(argv=None):
 
     auth.add_arguments(parser)
     parser.add_argument('--node-type', type=str, default='compute')
+    parser.add_argument('--use-lease', type=str,
+        help='Use the already-running lease ID (no lease creation or deletion). '
+             'Obviates --node-type and --no-clean.')
     parser.add_argument('--key-name', type=str, default='default',
         help='SSH keypair name on OS used to create an instance.')
     parser.add_argument('--builder-image', type=str, default='CC-CentOS7',
@@ -237,7 +240,13 @@ def main(argv=None):
     print('Lease: creating...')
     lease_name = 'lease-{}'.format(BUILD_TAG)
     server_name = 'instance-{}'.format(BUILD_TAG)
-    with Lease(session, name=lease_name, node_type=args.node_type, _no_clean=args.no_clean) as lease:
+
+    if args.use_lease:
+        lease = Lease.from_existing(session, id=args.use_lease)
+    else:
+        lease = Lease(session, name=lease_name, node_type=args.node_type, _no_clean=args.no_clean)
+
+    with lease:
         print(' - started {}'.format(lease))
 
         print('Server: creating...')

@@ -32,10 +32,14 @@ git clone https://github.com/ChameleonCloud/CC-Ubuntu16.04.git CC-Ubuntu16.04
 # check the keypair exists
 nova keypair-show default > /dev/null
 
-python ccbuild.py \
-  --automated \
-  --ubuntu-release xenial \
-  --builder-image CC-Ubuntu16.04 \
-  --node-type $NODE_TYPE \
-  --variant gpu \
-  CC-Ubuntu16.04
+BUILD_ARGS='--automated '
+BUILD_ARGS+='--ubuntu-release xenial '
+BUILD_ARGS+='--builder-image CC-Ubuntu16.04 '
+BUILD_ARGS+="--node-type $NODE_TYPE "
+BUILD_ARGS+='--variant gpu '
+
+if ! [ -z ${EXISTING_LEASE:+x} ]; then
+  BUILD_ARGS+='--use-lease $EXISTING_LEASE '
+fi
+
+python ccbuild.py $BUILD_ARGS $LOCAL_REPO
