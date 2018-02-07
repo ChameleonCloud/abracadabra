@@ -9,9 +9,10 @@ requests
 ulid
 
 # dev/deploy
-invoke
-pylint
+# invoke
+# pylint
 pytest
 pytest-timeout
-twine
-wheel
+spur
+# twine
+# wheel
