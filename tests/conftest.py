@@ -2,37 +2,37 @@ import collections
 import os
 import secrets
 import time
+import traceback
 
 from ccmanage import auth
 from ccmanage.lease import Lease
 from glanceclient import Client as GlanceClient
+from keystoneauth1.exceptions.http import InternalServerError
 import pytest
 import spur
 
 from util import single
 
 BUILD_TAG = '{}-test'.format(os.environ.get('BUILD_TAG', secrets.token_hex(5)))
-
-# def pytest_addoption(parser):
-#     parser.addoption("--stringinput", action="append", default=[],
-#         help="list of stringinputs to pass to test functions")
-
-
-# def pytest_generate_tests(metafunc):
-#     if 'stringinput' in metafunc.fixturenames:
-#         metafunc.parametrize("stringinput",
-#                              metafunc.config.getoption('stringinput'))
-
+VARIANT_NODETYPE_DEFAULTS = {
+    'base': 'compute',
+    'gpu': 'gpu_p100',
+    'fpga': 'fpga',
+}
 
 def pytest_addoption(parser):
-    parser.addoption('--image', help='Image (name or ID) to use.')
+    parser.addoption('--image', help='Image (name or ID) to use. Required.')
     parser.addoption('--variant',
         help='Variant to test ("base", "gpu", "fpga", etc.) If not provided, '
-             'attempt to infer from image metadata.',
+             'inferred from image metadata.',
+    )
+    parser.addoption('--node-type',
+        help='Node type to launch on. If not provided, inferred from image '
+             'metadata.'
     )
     parser.addoption('--os',
-        help='Operating system to test. If not provided, attempt to infer from '
-             'image metadata.',
+        help='Operating system to test. If not provided, inferred from image '
+             'metadata.',
     )
     parser.addoption('--rc', help='RC file with OpenStack credentials')
     parser.addoption(
@@ -44,6 +44,11 @@ def pytest_addoption(parser):
         default=os.environ.get('KEY_FILE', '~/.ssh/id_rsa'),
         help='Path to SSH key associated with the key-name. If not provided, '
              'falls back to envvar KEY_FILE then to the string "~/.ssh/id_rsa"',
+    )
+    parser.addoption(
+        '--network-name', type=str,
+        default='sharednet1',
+        help='Name of network to launch instance on.',
     )
 
 @pytest.fixture(scope='session')
@@ -64,6 +69,8 @@ def keystone(request):
 @pytest.fixture(scope='session')
 def image(request, keystone):
     image_arg = request.config.getoption('--image')
+    if not image_arg:
+        pytest.exit('--image argument is required.')
 
     glance = GlanceClient('2', session=keystone)
     try:
@@ -94,37 +101,45 @@ def image(request, keystone):
 def server(request, keystone, image):
     ssh_key_name = request.config.getoption('--key-name')
     ssh_key_file = os.path.expanduser(request.config.getoption('--key-file'))
-    node_type = {
-        'gpu': 'gpu_p100',
-        'fpga': 'fpga',
-    }.get(image['variant'], 'compute')
+    net_name = request.config.getoption('--network-name')
+    node_type = request.config.getoption('--node-type')
+    if not node_type:
+        node_type = VARIANT_NODETYPE_DEFAULTS.get(image['variant'], 'compute')
 
     print('Lease: creating...')
     lease_name = 'lease-{}'.format(BUILD_TAG)
     server_name = 'instance-{}'.format(BUILD_TAG)
-    with Lease(keystone,
-               name=lease_name,
-               node_type=node_type,
-               #_no_clean=args.no_clean,
-            ) as lease:
-        print(' - started {}'.format(lease))
+    try:
+        with Lease(keystone,
+                name=lease_name,
+                node_type=node_type,
+                #_no_clean=args.no_clean,
+                ) as lease:
+            print(' - started {}'.format(lease))
 
-        try:
-            print('Server: creating...')
-            server = lease.create_server(name=server_name, key=ssh_key_name, image=image['id'])
-            print(' - building...')
-            server.wait()
-            print(' - started {}...'.format(server))
-            server.associate_floating_ip()
-            print(' - bound ip {} to server.'.format(server.ip))
-            print('waiting for remote to start')
-            wait(server.ip, username='cc', private_key_file=ssh_key_file)
-            print('remote contactable!')
-        except Exception as e:
-            # fatal problem, abort trying to do anything
-            pytest.exit('Problem starting server: {}'.format(e))
+            try:
+                print('Server: creating...')
+                server = lease.create_server(name=server_name, key=ssh_key_name,
+                                            net_name=net_name, image=image['id'])
+                print(' - building...')
+                server.wait()
+                print(' - started {}...'.format(server))
+                server.associate_floating_ip()
+                print(' - bound ip {} to server.'.format(server.ip))
+                print('waiting for remote to start')
+                wait(server.ip, username='cc', private_key_file=ssh_key_file)
+                print('remote contactable!')
+            except Exception as e:
+                # fatal problem, abort trying to do anything
+                pytest.exit('Problem starting server: {}'.format(e))
 
-        yield server
+            yield server
+
+    except InternalServerError as exc:
+        content = exc.response.content.decode('utf-8')
+        if 'Not enough hosts' in content:
+            pytest.exit('Unable to test, no hosts free.')
+        pytest.fail('Problem starting lease/server: {}'.format(content))
 
 
 @pytest.fixture
