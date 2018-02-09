@@ -1,6 +1,5 @@
 #!/bin/bash
 set -o errexit
-set -o nounset
 
 # my dev machine doesn't accept python3.6, but IUS only installed python3.6
 # could symlink it on Jenkins, but this is maybe less disruptive.
@@ -14,6 +13,7 @@ fi
 $PY3 -m venv venv3
 source venv3/bin/activate
 
+set -o nounset
 set -o xtrace
 
 python --version
