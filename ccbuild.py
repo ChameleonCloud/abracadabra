@@ -64,22 +64,24 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
     out = remote.run('git init --bare build.git', quiet=True)
     print(out)
 
-    # push to remote
+    print('- pushing repo to remote')
     # GIT_SSH_COMMAND setup (requires Git 2.3.0+, CentOS repos have ~1.8)
     git_ssh_args = [
         '-o UserKnownHostsFile=/dev/null',
         '-o StrictHostKeyChecking=no',
     ]
-    ssh_key_file = os.environ.get('SSH_KEY', None)
+    ssh_key_file = os.environ.get('SSH_KEY_FILE', None)
     if ssh_key_file:
+        print('  - using ssh keyfile at: {}'.format(ssh_key_file))
         git_ssh_args.append('-i {}'.format(ssh_key_file))
     proc = run('git push --all ssh://cc@{ip}/~/build.git'.format(ip=ip), cwd=repodir, env={
         'GIT_SSH_COMMAND': 'ssh {}'.format(' '.join(git_ssh_args)),
     })
-    print(proc.stdout)
-    print(proc.stderr)
+    print(' - stdout:\n{}\n - stderr:\n{}\n--------'.format(
+        proc.stdout, proc.stderr
+    ))
     if proc.returncode != 0:
-        raise RuntimeError()
+        raise RuntimeError('repo push to remote failed')
 
     # checkout local rev on remote
     remote.run('rm -rf ~/build', quiet=True)
@@ -173,8 +175,10 @@ def main(argv=None):
              'Obviates --node-type and --no-clean.')
     parser.add_argument('--net-name', type=str, default='sharednet1',
         help='Network name to launch the builder instance on.')
-    parser.add_argument('--key-name', type=str, default='default',
-        help='SSH keypair name on OS used to create an instance.')
+    parser.add_argument('--key-name', type=str, #default='default',
+        help='SSH keypair name on OS used to create an instance. The envvar '
+             'SSH_KEY_NAME is also looked at as a fallback, then it defaults '
+             'to "default".')
     parser.add_argument('--builder-image', type=str, default='CC-CentOS7',
         help='Name or ID of image to launch.')
     parser.add_argument('--no-clean', action='store_true',
@@ -199,6 +203,9 @@ def main(argv=None):
 
     args = parser.parse_args()
     session, rc = auth.session_from_args(args, rc=True)
+
+    if not args.key_name:
+        args.key_name = os.environ.get('SSH_KEY_NAME', 'default')
 
     if args.centos_revision and args.ubuntu_release:
         print('Only specify Ubuntu or CentOS options.', file=sys.stderr)
