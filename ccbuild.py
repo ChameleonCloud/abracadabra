@@ -171,14 +171,16 @@ def main(argv=None):
     parser.add_argument('--use-lease', type=str,
         help='Use the already-running lease ID (no lease creation or deletion). '
              'Obviates --node-type and --no-clean.')
+    parser.add_argument('--net-name', type=str, default='sharednet1',
+        help='Network name to launch the builder instance on.')
     parser.add_argument('--key-name', type=str, default='default',
         help='SSH keypair name on OS used to create an instance.')
     parser.add_argument('--builder-image', type=str, default='CC-CentOS7',
         help='Name or ID of image to launch.')
     parser.add_argument('--no-clean', action='store_true',
         help='Do not clean up on failure.')
-    parser.add_argument('--automated', action='store_true',
-        help='Skip interactive parts')
+    parser.add_argument('--rebuild-and-pause', action='store_true',
+        help='After built, rebuild server with the image.')
     parser.add_argument('--centos-revision', type=str,
         help='CentOS 7 revision to use. Defaults to latest.')
     parser.add_argument('--ubuntu-release', type=str,
@@ -252,7 +254,7 @@ def main(argv=None):
         print(' - started {}'.format(lease))
 
         print('Server: creating...')
-        server = lease.create_server(name=server_name, key=args.key_name, image=args.builder_image)
+        server = lease.create_server(name=server_name, key=args.key_name, image=args.builder_image, net_name=args.net_name)
         print(' - building...')
         server.wait()
         print(' - started {}...'.format(server))
@@ -269,11 +271,9 @@ def main(argv=None):
             with open(args.glance_info, 'w') as f:
                 json.dump(glance_results, f)
 
-        if args.automated:
+        if not args.rebuild_and_pause:
             # done, skip the manual test stuff.
             return
-
-        input('paused. continue to rebuild instance with new image. (server at {})'.format(server.ip))
 
         server.rebuild(glance_results['id'])
         server.wait()
