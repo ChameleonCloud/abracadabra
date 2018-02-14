@@ -67,7 +67,9 @@ nova keypair-show default > /dev/null
 
 if [ $VARIANT = 'gpu' ]; then
   NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
-  if [ $UBUNTU_RELEASE = 'xenial' ]; then
+  if [ $UBUNTU_RELEASE = 'bionic' ]; then
+    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu18.04}
+  elif [ $UBUNTU_RELEASE = 'xenial' ]; then
     BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu16.04}
   elif [ $UBUNTU_RELEASE = 'trusty' ]; then
     BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu14.04} # no support for trusty/gpu
