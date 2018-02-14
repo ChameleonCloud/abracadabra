@@ -31,7 +31,6 @@ git clone https://github.com/ChameleonCloud/CC-CentOS7.git CC-CentOS7
 nova keypair-show default > /dev/null
 
 python ccbuild.py \
-  --automated \
   --centos-revision latest \
   --glance-info imageinfo.json \
   CC-CentOS7

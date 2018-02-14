@@ -46,8 +46,7 @@ fi
 # check the keypair exists
 nova keypair-show default > /dev/null
 
-BUILD_ARGS='--automated '
-BUILD_ARGS+='--ubuntu-release trusty '
+BUILD_ARGS='--ubuntu-release trusty '
 
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
   BUILD_ARGS+='--use-lease $EXISTING_LEASE '

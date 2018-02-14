@@ -33,7 +33,6 @@ git clone https://github.com/ChameleonCloud/CC-CentOS7.git CC-CentOS7
 nova keypair-show default > /dev/null
 
 python ccbuild.py \
-  --automated \
   --centos-revision latest \
   --builder-image CC-CentOS7 \
   --node-type $NODE_TYPE \

@@ -46,7 +46,6 @@ fi
 nova keypair-show default > /dev/null
 
 python ccbuild.py \
-  --automated \
   --ubuntu-release xenial \
   --glance-info imageinfo.json \
   $LOCAL_REPO

@@ -32,8 +32,7 @@ git clone https://github.com/ChameleonCloud/CC-Ubuntu16.04.git CC-Ubuntu16.04
 # check the keypair exists
 nova keypair-show default > /dev/null
 
-BUILD_ARGS='--automated '
-BUILD_ARGS+='--ubuntu-release xenial '
+BUILD_ARGS='--ubuntu-release xenial '
 BUILD_ARGS+='--builder-image CC-Ubuntu16.04 '
 BUILD_ARGS+="--node-type $NODE_TYPE "
 BUILD_ARGS+='--variant gpu '

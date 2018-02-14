@@ -76,8 +76,7 @@ elif [ $VARIANT = 'fpga' ]; then
   NODE_TYPE=${NODE_TYPE:-fpga} # no support for ubuntu/fpga
 fi
 
-BUILD_ARGS='--automated '
-BUILD_ARGS+="--ubuntu-release $UBUNTU_RELEASE "
+BUILD_ARGS="--ubuntu-release $UBUNTU_RELEASE "
 BUILD_ARGS+="--variant $VARIANT "
 
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
