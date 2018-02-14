@@ -50,6 +50,10 @@ def pytest_addoption(parser):
         default='sharednet1',
         help='Name of network to launch instance on.',
     )
+    parser.addoption(
+        '--use-lease', type=str,
+        help='Launch servers with this preexisting lease UUID.',
+    )
 
 @pytest.fixture(scope='session')
 def keystone(request):
@@ -106,15 +110,23 @@ def server(request, keystone, image):
     if not node_type:
         node_type = VARIANT_NODETYPE_DEFAULTS.get(image['variant'], 'compute')
 
-    print('Lease: creating...')
-    lease_name = 'lease-{}'.format(BUILD_TAG)
     server_name = 'instance-{}'.format(BUILD_TAG)
+    existing_lease_id = request.config.getoption('--use-lease')
+    if existing_lease_id:
+        print('Lease: using existing with UUID {}'.format(existing_lease_id))
+        lease = Lease.from_existing(keystone, existing_lease_id)
+    else:
+        print('Lease: creating...')
+        lease_name = 'lease-{}'.format(BUILD_TAG)
+        lease = Lease(
+            keystone,
+            name=lease_name,
+            node_type=node_type,
+            #_no_clean=args.no_clean,
+        )
+
     try:
-        with Lease(keystone,
-                name=lease_name,
-                node_type=node_type,
-                #_no_clean=args.no_clean,
-                ) as lease:
+        with lease:
             print(' - started {}'.format(lease))
 
             try:

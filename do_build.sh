@@ -33,4 +33,8 @@ nova keypair-show default > /dev/null
 python ccbuild.py \
   --automated \
   --centos-revision latest \
+  --glance-info imageinfo.json \
   CC-CentOS7
+
+cd tests
+pytest --image=$(jq -r ."id" ../imageinfo.json)

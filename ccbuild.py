@@ -190,6 +190,8 @@ def main(argv=None):
         help='Image variant to build.')
     parser.add_argument('--glance-info', type=str,
         help='Dump a JSON to this path with the Glance info in it')
+    # parser.add_argument('--run-tests', action='store_true',
+    #     help='Run tests after creating image.')
     parser.add_argument('build_repo', type=str,
         help='Path of repo to push and build.')
 
