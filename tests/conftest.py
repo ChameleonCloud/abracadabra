@@ -36,14 +36,15 @@ def pytest_addoption(parser):
     )
     parser.addoption('--rc', help='RC file with OpenStack credentials')
     parser.addoption(
-        '--key-name', type=str, default='default',
-        help='SSH keypair name on OS used to create an instance.',
+        '--key-name', type=str, default=os.environ.get('SSH_KEY_NAME', 'default'),
+        help='SSH keypair name on OS used to create an instance. Also looks at '
+             'envvar SSH_KEY_NAME before using default "default".',
     )
     parser.addoption(
         '--key-file', type=str,
-        default=os.environ.get('KEY_FILE', '~/.ssh/id_rsa'),
+        default=os.environ.get('SSH_KEY_FILE', '~/.ssh/id_rsa'),
         help='Path to SSH key associated with the key-name. If not provided, '
-             'falls back to envvar KEY_FILE then to the string "~/.ssh/id_rsa"',
+             'falls back to envvar SSH_KEY_FILE then to "~/.ssh/id_rsa"',
     )
     parser.addoption(
         '--network-name', type=str,
