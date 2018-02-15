@@ -44,8 +44,12 @@ pip install -r requirements.txt >> pip.log
 
 pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
 
+IMAGEINFO_FILE=$(pwd)/imageinfo.json
 LOCAL_REPO=CC-Ubuntu16.04
 REMOTE_REPO=https://github.com/ChameleonCloud/CC-Ubuntu16.04.git
+
+# clean up from other builds
+rm -f build.log $IMAGEINFO_FILE
 
 if [ -d $LOCAL_REPO ]
 then
@@ -80,6 +84,7 @@ fi
 
 BUILD_ARGS="--ubuntu-release $UBUNTU_RELEASE "
 BUILD_ARGS+="--variant $VARIANT "
+BUILD_ARGS+="--glance-info $IMAGEINFO_FILE "
 
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
   BUILD_ARGS+="--use-lease $EXISTING_LEASE "
@@ -92,3 +97,6 @@ if ! [ -z ${BUILDER_IMAGE:+x} ]; then
 fi
 
 python ccbuild.py $BUILD_ARGS $LOCAL_REPO
+
+cd tests
+pytest --image=$(jq -r ."id" $IMAGEINFO_FILE)
