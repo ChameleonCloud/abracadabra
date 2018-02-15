@@ -60,17 +60,21 @@ def centos7():
 # https://github.com/openstack/diskimage-builder/blob/master/diskimage_builder/elements/ubuntu/root.d/10-cache-ubuntu-tarball#L23
 # automatically gets most recent **daily** cloud-image from https://cloud-images.ubuntu.com/xenial/current/
 # but the most recent in the parent directory seems to be what it is.
-UBUNTU_SERVER = 'https://cloud-images.ubuntu.com/'
-PATH_UBUNTU14 = UBUNTU_SERVER + 'trusty/'
-PATH_UBUNTU16 = UBUNTU_SERVER + 'xenial/'
+UBUNTU_SERVER = 'https://cloud-images.ubuntu.com'
 
 def newest_ubuntu(release):
     '''
-    Returns the latest version of the Ubuntu 16.04 cloud image.
+    Given the release codeword, returns the latest version of the Ubuntu cloud image.
+
+    14.04 - trusty
+    16.04 - xenial
+    17.04 - zesty
+    17.10 - artful
+    18.04 - bionic
     '''
-    assert release in {'trusty', 'xenial'}
     revision = 'unknown'
-    response = requests.get('{}{}/current/unpacked/build-info.txt'.format(UBUNTU_SERVER, release))
+    response = requests.get('{}/{}/current/unpacked/build-info.txt'.format(UBUNTU_SERVER, release))
+    response.raise_for_status()
     for line in response.text.splitlines():
         if line.startswith('serial='):
             revision = line.split('=', 1)[1].strip()

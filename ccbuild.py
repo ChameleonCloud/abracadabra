@@ -28,6 +28,11 @@ if not PY3:
 
 BUILD_TAG = os.environ.get('BUILD_TAG', 'imgbuild-{}'.format(ulid.ulid()))
 LATEST = 'latest'
+UBUNTU_VERSIONS = {
+    'trusty': '14.04',
+    'xenial': '16.04',
+    'bionic': '18.04',
+}
 
 
 def run(command, **kwargs):
@@ -189,7 +194,7 @@ def main(argv=None):
         help='CentOS 7 revision to use. Defaults to latest.')
     parser.add_argument('--ubuntu-release', type=str,
         help='Build an Ubuntu image from provided release. Don\'t combine '
-             'with --centos-revision', choices=['trusty', 'xenial'])
+             'with --centos-revision', choices=UBUNTU_VERSIONS)
     # parser.add_argument('--force', action='store_true',
     #     help='Only build if the variant revision isn\'t already in Glance')
     parser.add_argument('--variant', type=str, default='base',
@@ -231,8 +236,8 @@ def main(argv=None):
                 return 1
     else:
         os_slug = 'ubuntu-{}'.format(args.ubuntu_release)
-        number = {'trusty': '14.04', 'xenial': '16.04'}[args.ubuntu_release]
-        repo_location = 'https://github.com/ChameleonCloud/CC-Ubuntu16.04'
+        number = UBUNTU_VERSIONS[args.ubuntu_release]
+        repo_location = 'https://github.com/ChameleonCloud/CC-Ubuntu16.04' # yes, for all versions.
 
         name = '{} ({})'.format(number, args.ubuntu_release.capitalize())
         print('Latest Ubuntu {} cloud image revision: {}'.format(name, image_revision))
