@@ -1,4 +1,4 @@
-# Appliance Builder ... Chameleon .... Automated
+# Appliance BuildeR And Chameleon AutomateD ABRA
 
 Makes appliances for Chameleon.
 
