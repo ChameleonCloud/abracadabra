@@ -17,15 +17,14 @@ import argparse
 import json
 import operator
 import os
-import secrets
 import shlex
 import subprocess
 import sys
 import tempfile
 from urllib.parse import urlparse
 
-from hammers.osapi import Auth, load_osrc
-from hammers.osrest import glance, keystone
+from hammers.osapi import Auth
+from hammers.osrest import glance
 
 
 BASE_NAME = {
