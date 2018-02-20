@@ -215,15 +215,36 @@ def main(argv=None):
         print('must provide --latest or --image', file=sys.stderr)
         return 1
 
+    image_production_name = production_name(source_image)
+
     if not args.target:
         print('no targets specified, stopping.', file=sys.stderr)
         return 0
 
-    # copy the images
     target_auths = {site: auths[site] for site in args.target}
+
+    # filter eligible copy targets
+    ineligible = []
+    for site, auth in target_auths.items():
+        images = glance.images(auth, query={
+            'name': image_production_name,
+            'visibility': 'public',
+        })
+        images.sort(reverse=True, key=operator.itemgetter('created_at'))
+        if images[0]['checksum'] == source_image['checksum']:
+            print('skipping site "{}", already has production-named image with the same checksum ({})'
+                  .format(site, source_image['checksum']))
+            ineligible.append(site)
+    for site in ineligible: # can I modify keys while iterating? forgot
+        target_auths.pop(site)
+
+    if not target_auths:
+        print('no targets left, stopping.', file=sys.stderr)
+        return 0
+
+    # copy the images
     new_images = copy_image(auths[source_site], target_auths, source_id)
 
-    image_production_name = production_name(source_image)
     # rename old
     for site, auth in target_auths.items():
         named_images = glance.images(auth, query={
