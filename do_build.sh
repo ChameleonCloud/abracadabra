@@ -1,6 +1,10 @@
 #!/bin/bash
 set -o errexit
 
+REVISION=${REVISION:-latest} # overrideable if the image-index isn't updated
+# check for updates:
+# https://lists.centos.org/pipermail/centos/2018-February/168254.html
+
 # my dev machine doesn't accept python3.6, but IUS only installed python3.6
 # could symlink it on Jenkins, but this is maybe less disruptive.
 if command -v python3 >/dev/null 2>&1
@@ -31,7 +35,7 @@ git clone https://github.com/ChameleonCloud/CC-CentOS7.git CC-CentOS7
 nova keypair-show default > /dev/null
 
 python ccbuild.py \
-  --centos-revision latest \
+  --centos-revision $REVISION \
   --glance-info imageinfo.json \
   CC-CentOS7
 
