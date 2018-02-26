@@ -232,8 +232,8 @@ def main(argv=None):
         else:
             available_revs = sorted(i['revision'] for i in whatsnew.image_index().values())
             if args.centos_revision not in available_revs:
-                print('Requested revision "{}" not found. Available revisions: {}'.format(image_revision, available_revs), file=sys.stderr)
-                return 1
+                print('WARNING: Requested revision "{}" not found in index. Available revisions: {}'.format(image_revision, available_revs), file=sys.stderr)
+                # return 1
     else:
         os_slug = 'ubuntu-{}'.format(args.ubuntu_release)
         number = UBUNTU_VERSIONS[args.ubuntu_release]
