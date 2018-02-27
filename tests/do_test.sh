@@ -26,4 +26,4 @@ pip install --upgrade pip > pip.log
 pip --version
 pip install --requirement requirements.txt >> pip.log
 
-pytest --image=${IMAGE_NAME} --node-type=${NODE_TYPE}
+pytest --image=${IMAGE_NAME} --node-type=${NODE_TYPE} --tb=short
