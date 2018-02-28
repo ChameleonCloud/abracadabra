@@ -4,8 +4,7 @@ set -o nounset
 
 #############
 # required arguments
-UBUNTU_RELEASE=$1
-VARIANT=$2
+VARIANT=$1
 
 # optional exported variables
 # * EXISTING_LEASE - uses the lease ID (doesn't create it's own lease)
@@ -13,9 +12,9 @@ VARIANT=$2
 # * BUILDER_IMAGE - image to build on (GPU drivers want the same kernel version)
 
 # examples
-# $ ./do_build_ubuntu.sh trusty base
-# $ ./do_build_ubuntu.sh xenial gpu
-# $ NODE_TYPE=gpu_k80 ./do_build_ubuntu.sh xenial gpu # p100s are taken
+# $ ./do_build_centos.sh base
+# $ ./do_build_centos.sh fpga
+# $ NODE_TYPE=gpu_k80 ./do_build_centos.sh gpu # p100s are taken
 #############
 
 # my dev machine doesn't accept python3.6, but IUS only installed python3.6
@@ -45,8 +44,8 @@ pip install -r requirements.txt >> pip.log
 pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
 
 IMAGEINFO_FILE=$(pwd)/imageinfo.json
-LOCAL_REPO=CC-Ubuntu16.04
-REMOTE_REPO=https://github.com/ChameleonCloud/CC-Ubuntu16.04.git
+LOCAL_REPO=CC-CentOS7
+REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS7.git
 
 # clean up from other builds
 rm -f build.log $IMAGEINFO_FILE
@@ -69,20 +68,14 @@ fi
 # check the keypair exists
 nova keypair-show default > /dev/null
 
+BUILDER_IMAGE=${BUILDER_IMAGE:-CC-CentOS7}
 if [ $VARIANT = 'gpu' ]; then
   NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
-  if [ $UBUNTU_RELEASE = 'bionic' ]; then
-    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu18.04}
-  elif [ $UBUNTU_RELEASE = 'xenial' ]; then
-    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu16.04}
-  elif [ $UBUNTU_RELEASE = 'trusty' ]; then
-    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu14.04} # no support for trusty/gpu
-  fi
 elif [ $VARIANT = 'fpga' ]; then
-  NODE_TYPE=${NODE_TYPE:-fpga} # no support for ubuntu/fpga
+  NODE_TYPE=${NODE_TYPE:-fpga}
 fi
 
-BUILD_ARGS="--ubuntu-release $UBUNTU_RELEASE "
+BUILD_ARGS="--centos-revision latest "
 BUILD_ARGS+="--variant $VARIANT "
 BUILD_ARGS+="--glance-info $IMAGEINFO_FILE "
 
