@@ -94,4 +94,4 @@ python ccbuild.py $BUILD_ARGS $LOCAL_REPO
 
 cd tests
 date
-pytest --image=$(jq -r ."id" $IMAGEINFO_FILE)
+pytest --image=$(jq -r ."id" $IMAGEINFO_FILE) --node-type=${NODE_TYPE:-compute} --tb=short
