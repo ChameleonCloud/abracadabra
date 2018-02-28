@@ -66,7 +66,7 @@ else
 fi
 
 # check the keypair exists
-nova keypair-show default > /dev/null
+nova keypair-show ${SSH_KEY_NAME:-default}
 
 BUILDER_IMAGE=${BUILDER_IMAGE:-CC-CentOS7}
 if [ $VARIANT = 'gpu' ]; then

@@ -67,7 +67,7 @@ else
 fi
 
 # check the keypair exists
-nova keypair-show default > /dev/null
+nova keypair-show ${SSH_KEY_NAME:-default}
 
 if [ $VARIANT = 'gpu' ]; then
   NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
