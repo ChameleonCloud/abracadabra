@@ -96,7 +96,9 @@ if ! [ -z ${BUILDER_IMAGE:+x} ]; then
   BUILD_ARGS+="--builder-image $BUILDER_IMAGE "
 fi
 
+date # to compare timestamps if there are failures
 python ccbuild.py $BUILD_ARGS $LOCAL_REPO
 
 cd tests
+date
 pytest --image=$(jq -r ."id" $IMAGEINFO_FILE)
