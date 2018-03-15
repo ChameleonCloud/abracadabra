@@ -14,8 +14,9 @@ import spur
 from util import single
 
 BUILD_TAG = '{}-test'.format(os.environ.get('BUILD_TAG', secrets.token_hex(5)))
+NODETYPE_DEFAULT = 'compute_haswell'
 VARIANT_NODETYPE_DEFAULTS = {
-    'base': 'compute',
+    'base': 'compute_haswell',
     'gpu': 'gpu_p100',
     'fpga': 'fpga',
 }
@@ -109,7 +110,7 @@ def server(request, keystone, image):
     net_name = request.config.getoption('--network-name')
     node_type = request.config.getoption('--node-type')
     if not node_type:
-        node_type = VARIANT_NODETYPE_DEFAULTS.get(image['variant'], 'compute')
+        node_type = VARIANT_NODETYPE_DEFAULTS.get(image['variant'], NODETYPE_DEFAULT)
 
     server_name = 'instance-{}'.format(BUILD_TAG)
     existing_lease_id = request.config.getoption('--use-lease')
