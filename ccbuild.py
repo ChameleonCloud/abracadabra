@@ -174,7 +174,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
 
     auth.add_arguments(parser)
-    parser.add_argument('--node-type', type=str, default='compute')
+    parser.add_argument('--node-type', type=str, default='compute_haswell')
     parser.add_argument('--use-lease', type=str,
         help='Use the already-running lease ID (no lease creation or deletion). '
              'Obviates --node-type and --no-clean.')

@@ -69,7 +69,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
 
     auth.add_arguments(parser)
-    parser.add_argument('--node-type', type=str, default='compute')
+    parser.add_argument('--node-type', type=str, default='compute_haswell')
     parser.add_argument('--key-name', type=str, default='default',
         help='SSH keypair name on OS used to create an instance.')
     parser.add_argument('--image', type=str, default='CC-Ubuntu16.04',
