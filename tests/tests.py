@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -36,6 +37,24 @@ def test_cc_snapshot_sudowarn(server, shell):
 def test_cc_checks(server, shell):
     result = shell.run(['sudo', 'cc-checks'])
     assert result.return_code == 0
+    
+def test_cloudfuse(server, shell):
+    credentials = 'username={},password={},tenant={},authurl={}'.format(os.environ['OS_USERNAME'], os.environ['OS_PASSWORD'], os.environ['OS_TENANT_NAME'], os.environ['OS_AUTH_URL'])
+    # Test the correct installation of cloudfuse
+    result = shell.run(['cloudfuse', '-o', credentials, '-V'], allow_error=True)
+    assert 'fusermount version' in result.output
+    # Test mounting Object Store
+    # Create mounting point
+    mounting_dir_name = 'test_mounting_point'
+    shell.run(['mkdir', mounting_dir_name])
+    shell.run(['cloudfuse', '-o', credentials, mounting_dir_name])
+    # Compare with swift command
+    swift_list = shell.run(['swift', 'list'])
+    cloudfuse_list = shell.run(['ls', mounting_dir_name])
+    assert sorted(swift_list.output.split('\n')) == sorted(cloudfuse_list.output.split('\n'))
+    # Unmount and cleanup
+    shell.run(['fusermount', '-u', mounting_dir_name])
+    shell.run(['rmdir', mounting_dir_name])
 
 
 def test_provenance_data(server, shell, image):
