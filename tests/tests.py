@@ -41,7 +41,7 @@ def test_cc_checks(server, shell):
 def test_cloudfuse(server, shell):
     credentials = 'username={},password={},tenant={},authurl={}'.format(os.environ['OS_USERNAME'], os.environ['OS_PASSWORD'], os.environ['OS_TENANT_NAME'], os.environ['OS_AUTH_URL'])
     # Test the correct installation of cloudfuse
-    result = shell.run(['cloudfuse', '-o', credentials, '-V'], allow_error=True)
+    result = shell.run(['cloudfuse', '-o', credentials, '-V'], allow_error=True, encoding='utf-8')
     assert 'fusermount version' in result.output
     # Test mounting Object Store
     # Create mounting point
@@ -49,8 +49,8 @@ def test_cloudfuse(server, shell):
     shell.run(['mkdir', mounting_dir_name])
     shell.run(['cloudfuse', '-o', credentials, mounting_dir_name])
     # Compare with swift command
-    swift_list = shell.run(['swift', 'list'])
-    cloudfuse_list = shell.run(['ls', mounting_dir_name])
+    swift_list = shell.run(['swift', 'list'], encoding='utf-8')
+    cloudfuse_list = shell.run(['ls', mounting_dir_name], encoding='utf-8')
     assert sorted(swift_list.output.split('\n')) == sorted(cloudfuse_list.output.split('\n'))
     # Unmount and cleanup
     shell.run(['fusermount', '-u', mounting_dir_name])
