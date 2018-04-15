@@ -37,9 +37,10 @@ def test_cc_snapshot_sudowarn(server, shell):
 def test_cc_checks(server, shell):
     result = shell.run(['sudo', 'cc-checks'])
     assert result.return_code == 0
-    
+ 
+@pytest.mark.require_region('CHI@TACC') # only chi@tacc has object store
 def test_cloudfuse(server, shell):
-    credentials = 'username={},password={},tenant={},authurl={}'.format(os.environ['OS_USERNAME'], os.environ['OS_PASSWORD'], os.environ['OS_TENANT_NAME'], os.environ['OS_AUTH_URL'].replace('uc', 'tacc'))
+    credentials = 'username={},password={},tenant={},authurl={}'.format(os.environ['OS_USERNAME'], os.environ['OS_PASSWORD'], os.environ['OS_TENANT_NAME'], os.environ['OS_AUTH_URL'])
     # Test the correct installation of cloudfuse
     result = shell.run(['cloudfuse', '-o', credentials, '-V'], allow_error=True, encoding='utf-8')
     assert 'fusermount version' in result.output
