@@ -86,11 +86,15 @@ BUILD_ARGS="--ubuntu-release $UBUNTU_RELEASE "
 BUILD_ARGS+="--variant $VARIANT "
 BUILD_ARGS+="--glance-info $IMAGEINFO_FILE "
 
+TEST_BUILD_ARGS="--tb=short "
+
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
   BUILD_ARGS+="--use-lease $EXISTING_LEASE "
+  TEST_BUILD_ARGS+="--use-lease $EXISTING_LEASE "
 fi
 if ! [ -z ${NODE_TYPE:+x} ]; then
   BUILD_ARGS+="--node-type $NODE_TYPE "
+  TEST_BUILD_ARGS+="--node-type $NODE_TYPE "
 fi
 if ! [ -z ${BUILDER_IMAGE:+x} ]; then
   BUILD_ARGS+="--builder-image $BUILDER_IMAGE "
@@ -101,4 +105,5 @@ python ccbuild.py $BUILD_ARGS $LOCAL_REPO
 
 cd tests
 date
-pytest --image=$(jq -r ."id" $IMAGEINFO_FILE) --node-type=${NODE_TYPE:-compute_haswell} --tb=short
+TEST_BUILD_ARGS+="--image=$(jq -r .\"id\" $IMAGEINFO_FILE)"
+pytest $TEST_BUILD_ARGS
