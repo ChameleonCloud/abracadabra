@@ -68,14 +68,29 @@ VARIANT_NAME = {
 
 
 def production_name(image=None, os=None, variant=None):
-    if os is None and variant is None:
-        if image is None:
-            raise ValueError('must provide image or os/variant')
-        os = image['build-os']
-        variant = image['build-variant']
-    elif os is None or variant is None:
+    os_from_image = None
+    variant_from_image = None
+    if image is not None:
+        try:
+            os_from_image = image['build-os']
+            variant_from_image = image['build-variant']
+        except KeyError:
+            try:
+                os_from_image = image['build_os']
+                variant_from_image = image['build_variant']
+            except KeyError:
+                # do nothing
+                pass
+                
+    # if os and variant provided, use the provided value first; otherwise, consider the values read from image
+    if os is None:
+        os = os_from_image
+    if variant is None:
+        variant = variant_from_image
+    
+    if os is None or variant is None:
         raise ValueError('must provide image or os/variant')
-
+    
     base = BASE_NAME[os]
     variant = VARIANT_NAME[variant]
     var_delim = '-' if variant else ''
@@ -83,7 +98,16 @@ def production_name(image=None, os=None, variant=None):
 
 
 def archival_name(image=None, os=None, variant=None):
-    return '{}-{}'.format(production_name(image, os, variant), image['build-os-base-image-revision'])
+    build_os_base_image_revision = None
+    try:
+        build_os_base_image_revision = image['build-os-base-image-revision']
+    except KeyError:
+        build_os_base_image_revision = image['build_os_base_image_revision']
+        
+    if build_os_base_image_revision is None:
+        raise ValueError('No build os base image revision found!')
+        
+    return '{}-{}'.format(production_name(image, os, variant), build_os_base_image_revision)
 
 
 def extract_extra_properties(image):
