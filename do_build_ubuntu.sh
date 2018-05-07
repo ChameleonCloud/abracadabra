@@ -71,6 +71,7 @@ nova keypair-show ${SSH_KEY_NAME:-default}
 
 if [ $VARIANT = 'gpu' ]; then
   NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
+  CUDA_VERSION=${CUDA_VERSION:-cuda9} #overrideable for other cuda versions
   if [ $UBUNTU_RELEASE = 'bionic' ]; then
     BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu18.04}
   elif [ $UBUNTU_RELEASE = 'xenial' ]; then
@@ -98,6 +99,9 @@ if ! [ -z ${NODE_TYPE:+x} ]; then
 fi
 if ! [ -z ${BUILDER_IMAGE:+x} ]; then
   BUILD_ARGS+="--builder-image $BUILDER_IMAGE "
+fi
+if ! [ -z ${CUDA_VERSION:+x} ]; then
+  BUILD_ARGS+="--cuda-version $CUDA_VERSION "
 fi
 
 date # to compare timestamps if there are failures

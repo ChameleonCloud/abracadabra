@@ -62,7 +62,8 @@ SITE_AUTH_HOSTS = {
 }
 VARIANT_NAME = {
     'base': '',
-    'gpu': 'CUDA8',
+    'gpu-cuda8': 'CUDA8',
+    'gpu-cuda9': 'CUDA9',
     'fpga': 'FPGA',
 }
 

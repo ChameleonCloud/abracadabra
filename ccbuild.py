@@ -55,7 +55,7 @@ def get_local_rev(path):
     return head
 
 
-def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
+def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_version='cuda9'):
     if not revision.strip():
         raise ValueError('must provide revision to use')
 
@@ -113,11 +113,17 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base'):
             release = '--release {}'.format(ubuntu_release)
         else:
             release = ''
+            
+        if variant == 'gpu':
+            cuda = '--cuda-version {}'.format(cuda_version)
+        else:
+            cuda = ''
 
-        cmd = 'python create-image.py --revision {revision} {release} {variant}'.format(
+        cmd = 'python create-image.py --revision {revision} {release} --variant {variant} {cuda}'.format(
             revision=revision,
             release=release,
             variant=variant,
+            cuda=cuda,
         )
         # DO THE THING
         remote.run(cmd, pty=True, capture_buffer_size=10000, stdout=out)
@@ -199,6 +205,8 @@ def main(argv=None):
     #     help='Only build if the variant revision isn\'t already in Glance')
     parser.add_argument('--variant', type=str, default='base',
         help='Image variant to build.')
+    parser.add_argument('--cuda-version', type=str, default='cuda9',
+        help='CUDA version to install. Ignore if the variant is not gpu.')
     parser.add_argument('--glance-info', type=str,
         help='Dump a JSON to this path with the Glance info in it')
     # parser.add_argument('--run-tests', action='store_true',
@@ -273,7 +281,7 @@ def main(argv=None):
         server.associate_floating_ip()
         print(' - bound ip {} to server.'.format(server.ip))
 
-        build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant)
+        build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant, cuda_version=args.cuda_version)
         pprint(build_results)
 
         glance_results = do_upload(server.ip, rc, metadata, **build_results)
