@@ -98,7 +98,7 @@ def production_name(image=None, os=None, variant=None, cuda_version=None):
     base = BASE_NAME[os]
     variant = VARIANT_NAME[variant]
     
-    if variant == 'gpu':
+    if variant == 'CUDA':
         if cuda_version is None:
             cuda_version = image['build-cuda-version']
         variant = '{}{}'.format(variant, CUDA_VERSION[cuda_version])
@@ -107,7 +107,7 @@ def production_name(image=None, os=None, variant=None, cuda_version=None):
     return 'CC-{}{}{}'.format(base, var_delim, variant)
 
 
-def archival_name(image=None, os=None, variant=None):
+def archival_name(image=None, os=None, variant=None, cuda_version=None):
     build_os_base_image_revision = None
     try:
         build_os_base_image_revision = image['build-os-base-image-revision']
@@ -117,7 +117,7 @@ def archival_name(image=None, os=None, variant=None):
     if build_os_base_image_revision is None:
         raise ValueError('No build os base image revision found!')
         
-    return '{}-{}'.format(production_name(image, os, variant), build_os_base_image_revision)
+    return '{}-{}'.format(production_name(image, os, variant, cuda_version), build_os_base_image_revision)
 
 
 def extract_extra_properties(image):
@@ -222,9 +222,14 @@ def main(argv=None):
     with open(args.auth_jsons) as f:
         auth_data = json.load(f)
 
+    if not args.target:
+        print('no targets specified, stopping.', file=sys.stderr)
+        return 0
+
     auths = {}
     for site, auth_info in auth_data['auths'].items():
-        auths[site] = Auth(auth_info)
+        if site in args.target:
+            auths[site] = Auth(auth_info)
 
     if args.image:
         source_site, source_id = args.image
@@ -235,17 +240,20 @@ def main(argv=None):
         query = {
             'build-os': distro,
         }
+        cuda_version = None
         if variant.startswith('gpu'):
             variant_cuda = variant.split('-')
-            query['build-variant'] = variant_cuda[0]
-            query['build-cuda-version'] = variant_cuda[1]
+            variant = variant_cuda[0]
+            cuda_version = variant_cuda[1]
+            query['build-variant'] = variant
+            query['build-cuda-version'] = cuda_version
         else:
             query['build-variant'] = variant
 
         matching_images = glance.images(auths[source_site], query=query)
         matching_images.sort(reverse=True, key=operator.itemgetter('created_at'))
         latest_image = matching_images[0]
-        if latest_image['name'] == production_name(os=distro, variant=variant):
+        if latest_image['name'] == production_name(os=distro, variant=variant, cuda_version=cuda_version):
             print('latest image matching distro "{}", variant "{}" already has production name (released?)'
                   .format(distro, variant), file=sys.stderr)
             return 0
@@ -258,10 +266,6 @@ def main(argv=None):
 
     image_production_name = production_name(source_image)
 
-    if not args.target:
-        print('no targets specified, stopping.', file=sys.stderr)
-        return 0
-
     target_auths = {site: auths[site] for site in args.target}
 
     # filter eligible copy targets
@@ -272,7 +276,7 @@ def main(argv=None):
             'visibility': 'public',
         })
         images.sort(reverse=True, key=operator.itemgetter('created_at'))
-        if images[0]['checksum'] == source_image['checksum']:
+        if len(images) > 0 and images[0]['checksum'] == source_image['checksum']:
             print('skipping site "{}", already has production-named image with the same checksum ({})'
                   .format(site, source_image['checksum']))
             ineligible.append(site)
