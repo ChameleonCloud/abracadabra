@@ -62,13 +62,16 @@ SITE_AUTH_HOSTS = {
 }
 VARIANT_NAME = {
     'base': '',
-    'gpu-cuda8': 'CUDA8',
-    'gpu-cuda9': 'CUDA9',
+    'gpu': 'CUDA',
     'fpga': 'FPGA',
+}
+CUDA_VERSION = {
+    'cuda8': '8',
+    'cuda9': '9',
 }
 
 
-def production_name(image=None, os=None, variant=None):
+def production_name(image=None, os=None, variant=None, cuda_version=None):
     os_from_image = None
     variant_from_image = None
     if image is not None:
@@ -94,6 +97,12 @@ def production_name(image=None, os=None, variant=None):
     
     base = BASE_NAME[os]
     variant = VARIANT_NAME[variant]
+    
+    if variant == 'gpu':
+        if cuda_version is None:
+            cuda_version = image['build-cuda-version']
+        variant = '{}{}'.format(variant, CUDA_VERSION[cuda_version])
+    
     var_delim = '-' if variant else ''
     return 'CC-{}{}{}'.format(base, var_delim, variant)
 
@@ -223,10 +232,17 @@ def main(argv=None):
         print('found specified image {} ({}) to publish'.format(source_image['name'], source_id))
     elif args.latest:
         source_site, distro, variant = args.latest
-        matching_images = glance.images(auths[source_site], query={
+        query = {
             'build-os': distro,
-            'build-variant': variant,
-        })
+        }
+        if variant.startswith('gpu'):
+            variant_cuda = variant.split('-')
+            query['build-variant'] = variant_cuda[0]
+            query['build-cuda-version'] = variant_cuda[1]
+        else:
+            query['build-variant'] = variant
+
+        matching_images = glance.images(auths[source_site], query=query)
         matching_images.sort(reverse=True, key=operator.itemgetter('created_at'))
         latest_image = matching_images[0]
         if latest_image['name'] == production_name(os=distro, variant=variant):

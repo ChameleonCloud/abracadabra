@@ -259,6 +259,8 @@ def main(argv=None):
         'build-repo-commit': commit,
         'build-tag': BUILD_TAG,
     }
+    if args.variant == 'gpu':
+        metadata['build-cuda-version'] = args.cuda_version
     pprint(metadata)
 
     print('Lease: creating...')
