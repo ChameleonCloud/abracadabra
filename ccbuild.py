@@ -20,6 +20,8 @@ from ccmanage.util import random_base32
 from hammers.osapi import Auth
 from hammers.osrest import glance
 
+from swiftclient.client import Connection as swift_conn
+
 import whatsnew
 
 PY3 = sys.version_info.major >= 3
@@ -55,7 +57,7 @@ def get_local_rev(path):
     return head
 
 
-def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_version='cuda9'):
+def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_version='cuda9', session):
     if not revision.strip():
         raise ValueError('must provide revision to use')
 
@@ -63,6 +65,38 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
     print('waiting for remote to start')
     remote.wait()
     print('remote contactable!')
+    
+    ssh_key_file = os.environ.get('SSH_KEY_FILE', None)
+    
+    # if fpga, download installation packages from Chameleon object storage
+    if variant == 'fpga':
+        tmp_fpga_dir = '/tmp/fpga'
+        objects = ['aocl-rte-16.0.0-1.x86_64.rpm', 'nalla_pcie_16.0.2.tgz']
+        run('mkdir -p {}'.format(tmp_fpga_dir))
+        remote.run('sudo mkdir -p {}'.format(tmp_fpga_dir))
+        
+        swift_connection = swift_conn(session=session)
+        for obj in objects:
+            print('downloading {}'.format(obj))
+            resp_headers, obj_contents = swift_connection.get_object('FPGA', obj)
+            with open('{}/{}'.format(tmp_fpga_dir, obj), 'wb') as local:
+                local.write(obj_contents)
+            if ssh_key_file:
+                proc = run('scp -i {} {}/{} cc@{}:'.format(ssh_key_file, tmp_fpga_dir, obj, ip))
+            else:
+                proc = run('scp {}/{} cc@{}:'.format(tmp_fpga_dir, obj, ip))
+            print(' - stdout:\n{}\n - stderr:\n{}\n--------'.format(
+                proc.stdout, proc.stderr
+                ))
+            if proc.returncode != 0:
+                raise RuntimeError('scp to remote failed!')
+            else:
+                remote.run('sudo mv ~/{} {}/'.format(obj, tmp_fpga_dir))
+                remote.run('sudo chmod -R 755 {}'.format(tmp_fpga_dir))
+        
+        # clean up
+        run('rm -rf {}'.format(tmp_fpga_dir))
+        remote.run('sudo ls -la /tmp/fpga')
 
     # init remote repo
     remote.run('rm -rf ~/build.git', quiet=True)
@@ -75,7 +109,7 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
         '-o UserKnownHostsFile=/dev/null',
         '-o StrictHostKeyChecking=no',
     ]
-    ssh_key_file = os.environ.get('SSH_KEY_FILE', None)
+    
     if ssh_key_file:
         print('  - using ssh keyfile at: {}'.format(ssh_key_file))
         git_ssh_args.append('-i {}'.format(ssh_key_file))
@@ -283,7 +317,7 @@ def main(argv=None):
         server.associate_floating_ip()
         print(' - bound ip {} to server.'.format(server.ip))
 
-        build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant, cuda_version=args.cuda_version)
+        build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant, cuda_version=args.cuda_version, session=session)
         pprint(build_results)
 
         glance_results = do_upload(server.ip, rc, metadata, **build_results)
