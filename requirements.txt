@@ -1,7 +1,7 @@
 Fabric3
 -e git+https://github.com/ChameleonCloud/hammers#egg=hammers
 paramiko
--e git+https://github.com/ChameleonCloud/python-blazarclient.git@region-name#egg=python-blazarclient
+python-blazarclient>=1.1.1
 python-glanceclient
 python-neutronclient
 python-swiftclient
