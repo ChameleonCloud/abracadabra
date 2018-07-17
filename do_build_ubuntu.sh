@@ -47,6 +47,11 @@ pip freeze | grep hammers # hammers version (master branch, so somewhat volatile
 IMAGEINFO_FILE=$(pwd)/imageinfo.json
 LOCAL_REPO=CC-Ubuntu16.04
 REMOTE_REPO=https://github.com/ChameleonCloud/CC-Ubuntu16.04.git
+REMOTE_BRANCH=master
+
+if ! [ -z ${BUILDER_BRANCH:+x} ]; then
+        REMOTE_BRANCH=$BUILDER_BRANCH
+fi
 
 # clean up from other builds
 rm -f build.log $IMAGEINFO_FILE
@@ -55,7 +60,7 @@ if [ -d $LOCAL_REPO ]
 then
   OLD_HEAD=$(git -C $LOCAL_REPO rev-parse HEAD)
   rm -rf $LOCAL_REPO
-  git clone $REMOTE_REPO $LOCAL_REPO
+  git clone -b $REMOTE_BRANCH $REMOTE_REPO $LOCAL_REPO
   {
     echo '          Changes'
     echo '=============================='
@@ -63,7 +68,7 @@ then
   git -C $LOCAL_REPO log ${OLD_HEAD}..
 
 else
-  git clone $REMOTE_REPO $LOCAL_REPO
+  git clone -b $REMOTE_BRANCH $REMOTE_REPO $LOCAL_REPO
 fi
 
 # check the keypair exists
