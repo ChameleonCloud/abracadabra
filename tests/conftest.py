@@ -78,7 +78,7 @@ def image(request, keystone):
     if not image_arg:
         pytest.exit('--image argument is required.')
 
-    glance = GlanceClient('2', session=keystone)
+    glance = GlanceClient('2', session=keystone, region_name=os.environ.get('OS_REGION_NAME'))
     try:
         image = single(glance.images.list(filters={'name': image_arg}))
     except ValueError:
