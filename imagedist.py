@@ -64,6 +64,7 @@ VARIANT_NAME = {
     'base': '',
     'gpu': 'CUDA',
     'fpga': 'FPGA',
+    'arm64': 'ARM64'
 }
 CUDA_VERSION = {
     'cuda8': '8',

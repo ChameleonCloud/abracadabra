@@ -82,10 +82,27 @@ if [ $VARIANT = 'gpu' ]; then
   elif [ $UBUNTU_RELEASE = 'xenial' ]; then
     BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu16.04}
   elif [ $UBUNTU_RELEASE = 'trusty' ]; then
-    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu14.04} # no support for trusty/gpu
+    # no support for trusty/gpu
+    echo "No support for trusty / gpu"
+    exit 1
+  else
+  	echo "Unrecognized ubuntu release $UBUNTU_RELEASE"
+  	exit 1
   fi
-elif [ $VARIANT = 'fpga' ]; then
-  NODE_TYPE=${NODE_TYPE:-fpga} # no support for ubuntu/fpga
+elif [ $VARIANT = 'arm64' ]; then
+  NODE_TYPE=${NODE_TYPE:-arm64}
+  # only support xenial/arm64
+  if [ $UBUNTU_RELEASE != 'xenial' ]; then
+    echo "Only support xenial for arm64"
+    exit 1
+  fi
+  # new release of arm64 required the previous releases
+  # arm64 is not binary compatible
+  BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu16.04-ARM64}
+  if [[ ${BUILDER_IMAGE} != 'CC-Ubuntu16.04-ARM64'* ]]; then
+  	echo ""
+  	exit 1
+  fi
 fi
 
 BUILD_ARGS="--ubuntu-release $UBUNTU_RELEASE "
@@ -111,6 +128,9 @@ fi
 
 date # to compare timestamps if there are failures
 python ccbuild.py $BUILD_ARGS $LOCAL_REPO
+
+# trying to avoid 'No valid host was found. There are not enough hosts available.' error
+sleep 5m
 
 cd tests
 date

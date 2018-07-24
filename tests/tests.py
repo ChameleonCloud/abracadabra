@@ -81,6 +81,7 @@ def test_uids(server, shell):
 
 
 @pytest.mark.require_os(['centos7', 'ubuntu-xenial']) # trusty doesn't have RAPL
+@pytest.mark.skip_variant('arm64')
 def test_etrace2(server, shell):
     result = shell.run(['etrace2', 'sleep', '1'], encoding='utf-8')
     assert 'ETRACE2' in result.output

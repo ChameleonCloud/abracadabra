@@ -105,6 +105,9 @@ fi
 date # to compare timestamps if there are failures
 python ccbuild.py $BUILD_ARGS $LOCAL_REPO
 
+# trying to avoid 'No valid host was found. There are not enough hosts available.' error
+sleep 5m
+
 cd tests
 date
 TEST_BUILD_ARGS+="--image=$(jq -r .\"id\" $IMAGEINFO_FILE)"

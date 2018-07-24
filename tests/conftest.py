@@ -252,6 +252,10 @@ def skip_by_variant(request, image):
         if not (image['variant'] == req_variant or image['variant'] in req_variant):
             pytest.skip('test only for variant "{}", image has "{}"'
                         .format(req_variant, image['variant']))
+    if request.node.get_marker('skip_variant'):
+        skip_variant = request.node.get_marker('skip_variant').args[0]
+        if image['variant'] == skip_variant or image['variant'] in skip_variant:
+            pytest.skip('test skipped for variant "{}"'.format(image['variant']))
             
 @pytest.fixture(autouse=True)
 def skip_by_region(request):
