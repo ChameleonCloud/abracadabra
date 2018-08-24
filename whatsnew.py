@@ -1,13 +1,33 @@
 import configparser
 import io
 import operator
+import re
 import sys
+from html.parser import HTMLParser
 
 import requests
+from cryptography.hazmat.primitives.asymmetric.padding import PSS
 
 PATH = 'https://cloud.centos.org/centos/7/images/'
 INDEX = PATH + 'image-index'
 SUMS = PATH + 'sha256sum.txt'
+
+class TableParser(HTMLParser):
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.in_td = False
+        self.content_list = []
+    
+    def handle_starttag(self, tag, attrs):
+        if tag == 'td':
+            self.in_td = True
+    
+    def handle_data(self, data):
+        if self.in_td:
+            self.content_list.append(data.strip())
+    
+    def handle_endtag(self, tag):
+        self.in_td = False
 
 
 def centos_sums():
@@ -47,7 +67,30 @@ def image_index():
 
 
 def newest_image():
-    return max(image_index().values(), key=operator.itemgetter('revision'))
+    p = TableParser()
+    p.feed(requests.get(PATH).text)
+    
+    genericcloud_file_pattern = r'^CentOS-7-x86_64-GenericCloud-(\d[0-9_-]*).qcow2.xz$'
+    last_modified_pattern = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})$'
+    image_date_dict = {}
+    current_file = None
+    
+    for content in p.content_list:
+        if re.match(genericcloud_file_pattern, content):
+            image_date_dict[content] = None
+            current_file = content
+        elif re.match(last_modified_pattern, content) and current_file:
+            image_date_dict[current_file] = content
+        else:
+            current_file = None  
+            
+    latest_file_name = max(image_date_dict.items(), key=operator.itemgetter(1))[0]
+    
+    for image in image_index().values():
+        if image['file'] == latest_file_name:
+            return image
+            
+    return None
 
 
 def centos7():
@@ -81,17 +124,12 @@ def newest_ubuntu(release):
 
     return {'revision': revision}
 
-
-def cuda8():
-    ...
-
-
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
     print(centos7())
-    print(newest_ubuntu1604())
+    print(newest_ubuntu('xenial'))
 
 
 
