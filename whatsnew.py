@@ -6,7 +6,6 @@ import sys
 from html.parser import HTMLParser
 
 import requests
-from cryptography.hazmat.primitives.asymmetric.padding import PSS
 
 PATH = 'https://cloud.centos.org/centos/7/images/'
 INDEX = PATH + 'image-index'
