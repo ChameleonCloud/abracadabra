@@ -67,11 +67,20 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
     print('remote contactable!')
     
     ssh_key_file = os.environ.get('SSH_KEY_FILE', None)
+    region = os.environ['OS_REGION_NAME']
+    
+    ssh_args = ['-o UserKnownHostsFile=/dev/null',
+                '-o StrictHostKeyChecking=no']
     
     # if fpga, download installation packages from Chameleon object storage
     if variant == 'fpga':
         tmp_fpga_dir = '/tmp/fpga'
-        objects = ['aocl-rte-16.0.0-1.x86_64.rpm', 'nalla_pcie_16.0.2.tgz']
+        if region == 'CHI@TACC':
+            objects = ['aocl-rte-16.0.0-1.x86_64.rpm', 'nalla_pcie_16.0.2.tgz']
+        elif region == 'CHI@UC':
+            objects = ['aoc-env-de5anet.sh', 'AOCLProSetup-17.1.0.240-linux.run', 'de5a_net_e1.tar.gz']
+        else:
+            raise RuntimeError('Region incorrect!')
         run('mkdir -p {}'.format(tmp_fpga_dir))
         remote.run('sudo mkdir -p {}'.format(tmp_fpga_dir))
         
@@ -82,9 +91,9 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
             with open('{}/{}'.format(tmp_fpga_dir, obj), 'wb') as local:
                 local.write(obj_contents)
             if ssh_key_file:
-                proc = run('scp -i {} {}/{} cc@{}:'.format(ssh_key_file, tmp_fpga_dir, obj, ip))
+                proc = run('scp -i {} {} {}/{} cc@{}:'.format(ssh_key_file, ' '.join(ssh_args), tmp_fpga_dir, obj, ip))
             else:
-                proc = run('scp {}/{} cc@{}:'.format(tmp_fpga_dir, obj, ip))
+                proc = run('scp {} {}/{} cc@{}:'.format(' '.join(ssh_args), tmp_fpga_dir, obj, ip))
             print(' - stdout:\n{}\n - stderr:\n{}\n--------'.format(
                 proc.stdout, proc.stderr
                 ))
@@ -105,10 +114,7 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
 
     print('- pushing repo to remote')
     # GIT_SSH_COMMAND setup (requires Git 2.3.0+, CentOS repos have ~1.8)
-    git_ssh_args = [
-        '-o UserKnownHostsFile=/dev/null',
-        '-o StrictHostKeyChecking=no',
-    ]
+    git_ssh_args = ssh_args
     
     if ssh_key_file:
         print('  - using ssh keyfile at: {}'.format(ssh_key_file))
@@ -153,11 +159,12 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
         else:
             cuda = ''
 
-        cmd = 'python create-image.py --revision {revision} {release} --variant {variant} {cuda}'.format(
+        cmd = 'python create-image.py --revision {revision} {release} --variant {variant} {cuda} --region {region}'.format(
             revision=revision,
             release=release,
             variant=variant,
             cuda=cuda,
+            region=region,
         )
         # DO THE THING
         remote.run(cmd, pty=True, capture_buffer_size=10000, stdout=out)
