@@ -84,7 +84,7 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
         run('mkdir -p {}'.format(tmp_fpga_dir))
         remote.run('sudo mkdir -p {}'.format(tmp_fpga_dir))
         
-        swift_connection = swift_conn(session=session)
+        swift_connection = swift_conn(session=session, os_options = {'region_name': region})
         for obj in objects:
             print('downloading {}'.format(obj))
             resp_headers, obj_contents = swift_connection.get_object('FPGA', obj)
