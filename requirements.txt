@@ -1,5 +1,6 @@
 Fabric3
 -e git+https://github.com/ChameleonCloud/hammers#egg=hammers
+croniter
 paramiko
 python-blazarclient>=1.1.1
 python-glanceclient
