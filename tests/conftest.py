@@ -232,8 +232,8 @@ def wait(host, username='cc', **shell_kwargs):
 
 @pytest.fixture(autouse=True)
 def skip_by_os(request, image):
-    if request.node.get_marker('require_os'):
-        req_os = request.node.get_marker('require_os').args[0]
+    if request.node.get_closest_marker('require_os'):
+        req_os = request.node.get_closest_marker('require_os').args[0]
         # print(req_os)
         # print(image)
         # print(not (image['os'] == req_os or image['os'] in req_os))
@@ -244,22 +244,22 @@ def skip_by_os(request, image):
 
 @pytest.fixture(autouse=True)
 def skip_by_variant(request, image):
-    if request.node.get_marker('require_variant'):
-        req_variant = request.node.get_marker('require_variant').args[0]
+    if request.node.get_closest_marker('require_variant'):
+        req_variant = request.node.get_closest_marker('require_variant').args[0]
         # print(req_variant)
         # print(image)
         # print(image['variant'] not in req_variant)
         if not (image['variant'] == req_variant or image['variant'] in req_variant):
             pytest.skip('test only for variant "{}", image has "{}"'
                         .format(req_variant, image['variant']))
-    if request.node.get_marker('skip_variant'):
-        skip_variant = request.node.get_marker('skip_variant').args[0]
+    if request.node.get_closest_marker('skip_variant'):
+        skip_variant = request.node.get_closest_marker('skip_variant').args[0]
         if image['variant'] == skip_variant or image['variant'] in skip_variant:
             pytest.skip('test skipped for variant "{}"'.format(image['variant']))
             
 @pytest.fixture(autouse=True)
 def skip_by_region(request):
-    if request.node.get_marker('require_region'):
-        req_region = request.node.get_marker('require_region').args[0]
+    if request.node.get_closest_marker('require_region'):
+        req_region = request.node.get_closest_marker('require_region').args[0]
         if os.environ['OS_REGION_NAME'] != req_region:
             pytest.skip('test only for region "{}", but current region is "{}"'.format(req_region, os.environ['OS_REGION_NAME']))
