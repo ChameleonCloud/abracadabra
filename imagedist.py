@@ -139,10 +139,20 @@ def copy_image(source_auth, target_auths, source_image_id):
         proc = subprocess.run(shlex.split(curl_download), check=True)
 
         for site, target_auth in target_auths.items():
+            # to create a new image, need to create an empty image first and upload image file to the "file" url.
+            # the process will cause re-run problem.
+            # if creating new empty image succeeds, but uploading file fails, there will be an empty image 
+            # with "queued" status. When re-run, our program will pick the empty image as the latest
+            # image. To avoid this, we need to delete the queued image if uploading step fails. 
             new_image = glance.image_create(target_auth, source_image['name'], public=public, extra=extra)
-            curl_upload = glance.image_upload_curl(target_auth, new_image['id'], img_file)
-            proc = subprocess.run(shlex.split(curl_upload), check=True)
-
+            try:
+                curl_upload = glance.image_upload_curl(target_auth, new_image['id'], img_file)
+                proc = subprocess.run(shlex.split(curl_upload), check=True)
+            except Exception as e:
+                # will raise exception if deleting fails; in this case, please manually delete the empty image!
+                glance.image_delete(target_auth, new_image['id'])
+                raise e
+                
             new_image_full = glance.image(target_auth, id=new_image['id'])
             if new_image_full['checksum'] != source_image['checksum']:
                 raise RuntimeError('checksum mismatch')
@@ -229,8 +239,7 @@ def main(argv=None):
 
     auths = {}
     for site, auth_info in auth_data['auths'].items():
-        if site in args.target:
-            auths[site] = Auth(auth_info)
+        auths[site] = Auth(auth_info)
 
     if args.image:
         source_site, source_id = args.image
@@ -240,6 +249,7 @@ def main(argv=None):
         source_site, distro, variant = args.latest
         query = {
             'build-os': distro,
+            'status': 'active', # to prevent "queued" images, though we handle the situation in "copy_image" function
         }
         cuda_version = None
         if variant.startswith('gpu'):
@@ -313,6 +323,9 @@ def main(argv=None):
             'name': image_production_name,
             'visibility': 'public',
         })
+        
+    # delete tmp image
+    glance.image_delete(auths[source_site], source_id)
 
 
 if __name__ == '__main__':
