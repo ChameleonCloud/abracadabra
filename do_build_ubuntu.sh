@@ -136,3 +136,8 @@ cd tests
 date
 TEST_BUILD_ARGS+="--image=$(jq -r .\"id\" $IMAGEINFO_FILE)"
 pytest $TEST_BUILD_ARGS
+
+cd ..
+if ! [ -z ${EXISTING_LEASE:+x} ]; then
+  python cleanup_auto_build_lease.py --lease-id $EXISTING_LEASE
+fi

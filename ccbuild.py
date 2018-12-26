@@ -35,7 +35,6 @@ UBUNTU_VERSIONS = {
     'xenial': '16.04',
     'bionic': '18.04',
 }
-AUTO_BUILD_LEASE_PREFIX = 'appliance-auto-release-'
 
 
 def run(command, **kwargs):
@@ -335,11 +334,6 @@ def main(argv=None):
 
         print('Tearing down...')
         
-    # if lease is created by auto-build, delete lease when build success
-    if lease.name.startswith(AUTO_BUILD_LEASE_PREFIX):
-        print("This is an auto-build lease ({}), so deleting...".format(lease.id))
-        lease.delete()
-        print("Lease {} ({}) has been deleted!".format(lease.name, lease.id))
     print('done.')
 
 
