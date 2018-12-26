@@ -325,6 +325,7 @@ def main(argv=None):
         })
         
     # delete tmp image
+    print('delete tmp image {} from site {}'.format(source_id, source_site))
     glance.image_delete(auths[source_site], source_id)
 
 

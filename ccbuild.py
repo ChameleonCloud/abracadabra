@@ -236,8 +236,6 @@ def main(argv=None):
         help='Name or ID of image to launch.')
     parser.add_argument('--no-clean', action='store_true',
         help='Do not clean up on failure.')
-    parser.add_argument('--rebuild-and-pause', action='store_true',
-        help='After built, rebuild server with the image.')
     parser.add_argument('--centos-revision', type=str,
         help='CentOS 7 revision to use. Defaults to latest.')
     parser.add_argument('--ubuntu-release', type=str,
@@ -334,15 +332,6 @@ def main(argv=None):
         if args.glance_info:
             with open(args.glance_info, 'w') as f:
                 json.dump(glance_results, f)
-
-        if not args.rebuild_and_pause:
-            # done, skip the manual test stuff.
-            return
-
-        server.rebuild(glance_results['id'])
-        server.wait()
-
-        input('paused. continue to tear down instance and lease. (server at {})'.format(server.ip))
 
         print('Tearing down...')
         
