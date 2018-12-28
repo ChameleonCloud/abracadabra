@@ -1,8 +1,10 @@
 #!/bin/bash
 set -o errexit
 
-# my dev machine doesn't accept python3.6, but IUS only installed python3.6
-# could symlink it on Jenkins, but this is maybe less disruptive.
+TASK=$1
+JENKINS_LOCATION=$2
+ADMIN_AUTH_FILE=$3
+
 if command -v python3 >/dev/null 2>&1
 then
   PY3=python3
@@ -24,4 +26,11 @@ pip install -r requirements.txt >> pip.log
 
 pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
 
-python appliance_update_check_and_build_trigger.py $1
+if [ $TASK == "auto-release" ]; then
+	python jenkins_appliance_update_check_and_build_trigger.py $JENKINS_LOCATION $ADMIN_AUTH_FILE
+elif [ $TASK == "auto-test" ]; then
+	python jenkins_periodic_tests_setup.py $JENKINS_LOCATION
+else
+	echo "Unknown task $TASK"
+	exit 1
+fi

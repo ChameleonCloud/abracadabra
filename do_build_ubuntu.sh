@@ -139,5 +139,5 @@ pytest $TEST_BUILD_ARGS
 
 cd ..
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
-  python cleanup_auto_build_lease.py --lease-id $EXISTING_LEASE
+  python cleanup_auto_created_lease.py --lease-id $EXISTING_LEASE
 fi

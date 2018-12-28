@@ -2,8 +2,8 @@
 set -o errexit
 set -o nounset
 
-NODE_TYPE=$1
-IMAGE_NAME=$2
+COMPLEX_APPLIANCE_NAME=$1
+KEY_NAME=$2
 
 TARGET_FOLDER=venv
 
@@ -27,10 +27,10 @@ pip --version
 pip install --requirement requirements.txt >> pip.log
 
 if [ $# == 2 ]; then
-	pytest --image=${IMAGE_NAME} --node-type=${NODE_TYPE} --tb=short -s
+	pytest "${COMPLEX_APPLIANCE_NAME}.py" --key-name=${KEY_NAME}
 elif [ $# == 3 ]; then
 	LEASE_ID=$3
-	pytest --image=${IMAGE_NAME} --node-type=${NODE_TYPE} --use-lease=${LEASE_ID} --tb=short -s
+	pytest "${COMPLEX_APPLIANCE_NAME}.py" --use-lease=${LEASE_ID} --key-name=${KEY_NAME}
 	cd ..
 	python cleanup_auto_created_lease.py --lease-id ${LEASE_ID}
 fi
