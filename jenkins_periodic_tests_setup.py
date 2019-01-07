@@ -84,14 +84,10 @@ def main(argv=None):
 
     parser.add_argument('jenkins_jobs_location', type=str,
         help='Jenkins jobs location')
-    parser.add_argument('test_node_types', type=str, 
-        help='only test specified node types (comma separate). If not specified, test all node types.')
     
     args = parser.parse_args(argv[1:])
 
     node_type_list = IMAGE_TEST_MATRIX.keys()
-    if args.test_node_types:
-        node_type_list = args.test_node_types.split(',')
     
     for node_type in node_type_list:
         if node_type not in IMAGE_TEST_MATRIX:
