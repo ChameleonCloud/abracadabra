@@ -84,26 +84,29 @@ def main(argv=None):
 
     parser.add_argument('jenkins_jobs_location', type=str,
         help='Jenkins jobs location')
+    parser.add_argument('test_target', type=str,
+        help='What do you want to test?')
     
     args = parser.parse_args(argv[1:])
-
-    node_type_list = IMAGE_TEST_MATRIX.keys()
     
-    for node_type in node_type_list:
-        if node_type not in IMAGE_TEST_MATRIX:
-            print('Unknown node type {}'.format(node_type))
-            continue
-        for image_name in IMAGE_TEST_MATRIX[node_type]:
-            if node_type == 'fpga':
-                reserve_resource_for_test(args.jenkins_jobs_location, 'uc', node_type, image_name)
-            reserve_resource_for_test(args.jenkins_jobs_location, 'tacc', node_type, image_name)
+    if args.test_target == 'complex':
+        for complex_appliance in COMPLEX_APPLIANCE_TEST.keys():
+            reserve_resource_for_complex_appliance_test(args.jenkins_jobs_location, 
+                                                        'tacc', 
+                                                        complex_appliance, 
+                                                        COMPLEX_APPLIANCE_TEST[complex_appliance]['node_type'], 
+                                                        COMPLEX_APPLIANCE_TEST[complex_appliance]['node_cnt'])
+    else:
+        node_type = args.test_target
+        if args.test_target in IMAGE_TEST_MATRIX:
+            for image_name in IMAGE_TEST_MATRIX[node_type]:
+                if node_type == 'fpga':
+                    reserve_resource_for_test(args.jenkins_jobs_location, 'uc', node_type, image_name)
+                reserve_resource_for_test(args.jenkins_jobs_location, 'tacc', node_type, image_name)
+        else:
+            print('Unknown test target {}'.format(node_type))
+        
             
-    for complex_appliance in COMPLEX_APPLIANCE_TEST.keys():
-        reserve_resource_for_complex_appliance_test(args.jenkins_jobs_location, 
-                                                    'tacc', 
-                                                    complex_appliance, 
-                                                    COMPLEX_APPLIANCE_TEST[complex_appliance]['node_type'], 
-                                                    COMPLEX_APPLIANCE_TEST[complex_appliance]['node_cnt'])
           
 
 if __name__ == '__main__':
