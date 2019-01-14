@@ -108,8 +108,10 @@ def reserve_resource(booking_site, node_type, lease_name_prefix, job_name, job_c
                                                         password = urlparse.quote(os.environ['OS_PASSWORD']),
                                                         job_name = job_name),
                           headers = headers)
+        if r.status_code != 200:
+            raise RuntimeError('Lease created with id {} at site {}, but failed to reload Jenkins page.'.format(lease_id, booking_site))
         
-        print('Lease created with id {} at site {} and will start on {} (test will start 10 minutes later than lease start time.)'.format(lease_id, booking_site, start))
+        print('Lease created with id {} at site {} and will start on {} (task will start 10 minutes later than lease start time.)'.format(lease_id, booking_site, start))
             
     else:
         raise RuntimeError('Reserve resource {node_type} on {site} failed!'.format(node_type=node_type, site=booking_site))

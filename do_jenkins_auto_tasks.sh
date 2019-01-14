@@ -3,7 +3,7 @@ set -o errexit
 
 TASK=$1
 JENKINS_LOCATION=$2
-ADMIN_AUTH_FILE=$3
+EXTRA_PARAM=$3
 
 if command -v python3 >/dev/null 2>&1
 then
@@ -27,9 +27,11 @@ pip install -r requirements.txt >> pip.log
 pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
 
 if [ $TASK == "auto-release" ]; then
+	ADMIN_AUTH_FILE=$EXTRA_PARAM
 	python jenkins_appliance_update_check_and_build_trigger.py $JENKINS_LOCATION $ADMIN_AUTH_FILE
 elif [ $TASK == "auto-test" ]; then
-	python jenkins_periodic_tests_setup.py $JENKINS_LOCATION
+	TEST_TARGET=$EXTRA_PARAM
+	python jenkins_periodic_tests_setup.py $JENKINS_LOCATION $TEST_TARGET
 else
 	echo "Unknown task $TASK"
 	exit 1
