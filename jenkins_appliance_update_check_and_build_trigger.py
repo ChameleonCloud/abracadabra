@@ -111,7 +111,7 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
         params = PRODUCTION_NAMES_AND_SITES[production_name]['build']
     elif 'ubuntu' in build_os:
         # ubuntu
-        build_script = 'do_build_ubuntu'
+        build_script = 'do_build_ubuntu.sh'
         build_os = build_os.split('-')
         params = '{} {}'.format(build_os[1], PRODUCTION_NAMES_AND_SITES[production_name]['build'])
     

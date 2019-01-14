@@ -49,7 +49,7 @@ def reserve_resource(booking_site, node_type, lease_name_prefix, job_name, job_c
     if cron_time:
         iter = croniter(cron_time, now)
         if iter.get_next(datetime.datetime) <= now + datetime.timedelta(days=ADVANCED_RESERVATION_MAX_DAY):
-            print('A reservation exists and waits for testing; no need to reset.')
+            print('A reservation exists and waits for executing; no need to reset.')
             return
     
     # try booking every 30 minutes with max 15 days
