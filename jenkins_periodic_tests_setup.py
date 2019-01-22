@@ -29,9 +29,9 @@ COMPLEX_JOB_NAME_FORMAT = 'test-complex-{complex_appliance_name}'
 
 def reserve_resource_for_test(jenkins_location, booking_site, node_type, image_name):
     job_name = JOB_NAME_FORMAT.format(node_type=node_type.replace('_', '-'), image_name=image_name.lower())
-    job_config_file = jenkins_location + '/' + jenkinshelper.JENKINS_JOB_CONFIG_FILE.format(job_name=job_name)
     if node_type == 'fpga':
-        job_config_file = job_config_file + '-' + booking_site
+        job_name = job_name + '-' + booking_site
+    job_config_file = jenkins_location + '/' + jenkinshelper.JENKINS_JOB_CONFIG_FILE.format(job_name=job_name)
     
     cctest_openrc_file = jenkins_location + '/' + jenkinshelper.JENKINS_CCTEST_CREDENTIAL_FILE.format(site=booking_site)
     command = '\n'.join(['#!/bin/bash',
