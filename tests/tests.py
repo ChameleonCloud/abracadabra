@@ -39,7 +39,7 @@ def test_cc_checks(server, shell):
     assert result.return_code == 0
  
 def test_cloudfuse(server, shell):
-    credentials = 'username={},password={},tenant={},region={},authurl={}'.format(os.environ['OS_USERNAME'], 
+    credentials = 'username={},password={},tenant=\'{}\',region={},authurl={}'.format(os.environ['OS_USERNAME'], 
                                                                                   os.environ['OS_PASSWORD'], 
                                                                                   os.environ['OS_TENANT_NAME'], 
                                                                                   os.environ['OS_REGION_NAME'], 
