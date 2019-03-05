@@ -162,7 +162,7 @@ def copy_image(source_auth, target_auths, source_image_id):
     return new_images
 
 
-def archive_image(auth, image):
+def archive_image(auth, owner, image):
     '''
     auth : Auth object
         Authentication/authorization object indicating site to target.
@@ -178,7 +178,7 @@ def archive_image(auth, image):
     while True:
         name_collisions = glance.images(auth, query={
             'name': new_name,
-            'owner': auth.access['token']['tenant']['id'],
+            'owner': owner,
             'visibility': 'public',
         })
         if len(name_collisions) == 0:
@@ -305,11 +305,11 @@ def main(argv=None):
     for site, auth in target_auths.items():
         named_images = glance.images(auth, query={
             'name': image_production_name,
-            'owner': auth.access['token']['tenant']['id'],
+            'owner': auth_data['auths'][site]['OS_PROJECT_ID'],
             'visibility': 'public',
         })
         if len(named_images) == 1:
-            archive_image(auth, named_images[0]['id'])
+            archive_image(auth, auth_data['auths'][site]['OS_PROJECT_ID'], named_images[0]['id'])
         elif len(named_images) > 1:
             raise RuntimeError('multiple images with the name "{}"'.format(image_production_name))
         elif len(named_images) < 1:
