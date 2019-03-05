@@ -17,7 +17,7 @@ from ccmanage import lease as ccmanagelease
 from ccmanage import auth as ccmanageauth
 
 JENKINS_JOB_CONFIG_FILE = 'jobs/{job_name}/config.xml'
-JENKINS_CCTEST_CREDENTIAL_FILE = 'Chameleon-{site}-cctest-v2.sh'
+JENKINS_CCTEST_CREDENTIAL_FILE = 'Chameleon-{site}-cctest.sh'
 JENKINS_URL = 'https://{username}:{password}@jenkins.chameleoncloud.org'
 JENKINS_RELOAD_JOB_URL = JENKINS_URL + '/view/appliances/job/{job_name}/reload'
 ADVANCED_RESERVATION_MAX_DAY = 15
