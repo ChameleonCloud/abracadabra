@@ -43,7 +43,7 @@ def test_cloudfuse(server, shell):
                                                                                   os.environ['OS_PASSWORD'], 
                                                                                   os.environ['OS_PROJECT_NAME'], 
                                                                                   os.environ['OS_REGION_NAME'], 
-                                                                                  os.environ['OS_AUTH_URL'])
+                                                                                  os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'))
     # Test the correct installation of cloudfuse
     result = shell.run(['cloudfuse', '-o', credentials, '-V'], allow_error=True, encoding='utf-8')
     assert 'fusermount version' in result.output
