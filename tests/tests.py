@@ -38,7 +38,7 @@ def test_cc_checks(server, shell):
     result = shell.run(['sudo', 'cc-checks'])
     assert result.return_code == 0
  
-def test_cloudfuse(server, shell):
+def test_cloudfuse(server, shell, image):
     credentials = 'username={},password={},tenant={},region={},authurl={}'.format(os.environ['OS_USERNAME'], 
                                                                                   os.environ['OS_PASSWORD'], 
                                                                                   os.environ['OS_PROJECT_NAME'], 
@@ -56,7 +56,7 @@ def test_cloudfuse(server, shell):
     swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'],'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-name', os.environ['OS_PROJECT_NAME'], '--os-region-name', os.environ['OS_REGION_NAME']], encoding='utf-8', allow_error=True)
     cloudfuse_list = shell.run(['ls', mounting_dir_name], encoding='utf-8')
     # Ubuntu trusty has issue on running swift command
-    if swift_list.return_code == 0:
+    if image['os'] != 'ubuntu-trusty':
         assert sorted(swift_list.output.split('\n')) == sorted(cloudfuse_list.output.split('\n'))
     # Unmount and cleanup
     shell.run(['fusermount', '-u', mounting_dir_name])
