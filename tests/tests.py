@@ -53,7 +53,7 @@ def test_cloudfuse(server, shell, image):
     shell.run(['mkdir', mounting_dir_name])
     shell.run(['cloudfuse', '-o', credentials, mounting_dir_name])
     # Compare with swift command
-    swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'],'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-name', os.environ['OS_PROJECT_NAME'], '--os-region-name', os.environ['OS_REGION_NAME']], encoding='utf-8', allow_error=True)
+    swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'),'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '-V', '2'], encoding='utf-8', allow_error=True)
     cloudfuse_list = shell.run(['ls', mounting_dir_name], encoding='utf-8')
     # Ubuntu trusty has issue on running swift command
     if image['os'] != 'ubuntu-trusty':
