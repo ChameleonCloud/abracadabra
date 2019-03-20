@@ -38,20 +38,20 @@ def test_cc_checks(server, shell):
     result = shell.run(['sudo', 'cc-checks'])
     assert result.return_code == 0
  
-def test_cloudfuse(server, shell, image):
-    credentials = 'username={},password={},tenant={},region={},authurl={}'.format(os.environ['OS_USERNAME'], 
+def test_cc_cloudfuse(server, shell, image):
+    credentials = 'username={},password={},projectid={},region={},authurl={}'.format(os.environ['OS_USERNAME'], 
                                                                                   os.environ['OS_PASSWORD'], 
-                                                                                  os.environ['OS_PROJECT_NAME'], 
+                                                                                  os.environ['OS_PROJECT_ID'], 
                                                                                   os.environ['OS_REGION_NAME'], 
-                                                                                  os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'))
+                                                                                  os.environ['OS_AUTH_URL'])
     # Test the correct installation of cloudfuse
-    result = shell.run(['cloudfuse', '-o', credentials, '-V'], allow_error=True, encoding='utf-8')
+    result = shell.run(['cc-cloudfuse', 'mount', '-o', credentials, '-V'], allow_error=True, encoding='utf-8')
     assert 'fusermount version' in result.output
     # Test mounting Object Store
     # Create mounting point
     mounting_dir_name = 'test_mounting_point'
     shell.run(['mkdir', mounting_dir_name])
-    shell.run(['cloudfuse', '-o', credentials, mounting_dir_name])
+    shell.run(['cc-cloudfuse', 'mount', mounting_dir_name, '-o', credentials])
     # Compare with swift command
     swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'),'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '-V', '2'], encoding='utf-8', allow_error=True)
     cloudfuse_list = shell.run(['ls', mounting_dir_name], encoding='utf-8')
@@ -59,7 +59,7 @@ def test_cloudfuse(server, shell, image):
     if image['os'] != 'ubuntu-trusty':
         assert sorted(swift_list.output.split('\n')) == sorted(cloudfuse_list.output.split('\n'))
     # Unmount and cleanup
-    shell.run(['fusermount', '-u', mounting_dir_name])
+    shell.run(['cc-cloudfuse', 'unmount', mounting_dir_name])
     shell.run(['rmdir', mounting_dir_name])
 
 
