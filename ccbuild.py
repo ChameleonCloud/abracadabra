@@ -57,7 +57,7 @@ def get_local_rev(path):
     return head
 
 
-def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_version='cuda9', session):
+def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_version='cuda9', is_kvm=False, session):
     if not revision.strip():
         raise ValueError('must provide revision to use')
 
@@ -158,12 +158,16 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
             cuda = '--cuda-version {}'.format(cuda_version)
         else:
             cuda = ''
+            
+        kvm = ''
+        if is_kvm: kvm = '--kvm'
 
-        cmd = 'python create-image.py --revision {revision} {release} --variant {variant} {cuda} --region {region}'.format(
+        cmd = 'python create-image.py --revision {revision} {release} --variant {variant} {cuda} {kvm} --region {region}'.format(
             revision=revision,
             release=release,
             variant=variant,
             cuda=cuda,
+            kvm=kvm,
             region=region,
         )
         # DO THE THING
@@ -252,6 +256,7 @@ def main(argv=None):
     #     help='Run tests after creating image.')
     parser.add_argument('build_repo', type=str,
         help='Path of repo to push and build.')
+    parser.add_argument('--kvm', action='store_true', help='Present if build image for KVM site') 
 
     args = parser.parse_args()
     session, rc = auth.session_from_args(args, rc=True)
@@ -322,7 +327,7 @@ def main(argv=None):
         server.associate_floating_ip()
         print(' - bound ip {} to server.'.format(server.ip))
 
-        build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant, cuda_version=args.cuda_version, session=session)
+        build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant, cuda_version=args.cuda_version, is_kvm=args.kvm, session=session)
         pprint(build_results)
 
         glance_results = do_upload(server.ip, rc, metadata, **build_results)
