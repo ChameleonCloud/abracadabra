@@ -126,8 +126,17 @@ if ! [ -z ${CUDA_VERSION:+x} ]; then
   BUILD_ARGS+="--cuda-version $CUDA_VERSION "
 fi
 
+if ! [ -z ${KVM:+x} ] && $KVM; then
+  BUILD_ARGS+="--kvm"
+fi
+
 date # to compare timestamps if there are failures
 python ccbuild.py $BUILD_ARGS $LOCAL_REPO
+
+# skip the rest for kvm
+if ! [ -z ${KVM:+x} ] && $KVM; then
+  exit 0
+fi
 
 # trying to avoid 'No valid host was found. There are not enough hosts available.' error
 sleep 5m

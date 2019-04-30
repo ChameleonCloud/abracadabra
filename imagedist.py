@@ -143,7 +143,12 @@ def copy_image(source_auth, target_auths, source_image_id):
             # the process will cause re-run problem.
             # if creating new empty image succeeds, but uploading file fails, there will be an empty image 
             # with "queued" status. When re-run, our program will pick the empty image as the latest
-            # image. To avoid this, we need to delete the queued image if uploading step fails. 
+            # image. To avoid this, we need to delete the queued image if uploading step fails.
+            if site == 'kvm':
+                list_keys = list(extra.keys())
+                for k in list_keys:
+                    if k.startswith('os_'):
+                        extra.pop(k)
             new_image = glance.image_create(target_auth, source_image['name'], public=public, extra=extra)
             try:
                 curl_upload = glance.image_upload_curl(target_auth, new_image['id'], img_file)
