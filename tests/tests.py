@@ -53,7 +53,10 @@ def test_cc_cloudfuse(server, shell, image):
     shell.run(['mkdir', mounting_dir_name])
     shell.run(['cc-cloudfuse', 'mount', mounting_dir_name, '-o', credentials])
     # Compare with swift command
-    swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'),'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '-V', '2'], encoding='utf-8', allow_error=True)
+    if image['os'] == 'ubuntu-trusty':
+        swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'),'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '-V', '2'], encoding='utf-8', allow_error=True)
+    else:
+        swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'],'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '--auth-version', '3'], encoding='utf-8', allow_error=True)
     cloudfuse_list = shell.run(['ls', mounting_dir_name], encoding='utf-8')
     # Ubuntu trusty has issue on running swift command
     if image['os'] != 'ubuntu-trusty':
