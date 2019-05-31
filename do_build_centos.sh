@@ -76,7 +76,7 @@ nova keypair-show ${SSH_KEY_NAME:-default}
 BUILDER_IMAGE=${BUILDER_IMAGE:-CC-CentOS7}
 if [ $VARIANT = 'gpu' ]; then
   NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
-  CUDA_VERSION=${CUDA_VERSION:-cuda9} #overrideable for other cuda versions
+  CUDA_VERSION=${CUDA_VERSION:-cuda10} #overrideable for other cuda versions
 elif [ $VARIANT = 'fpga' ]; then
   NODE_TYPE=${NODE_TYPE:-fpga}
 fi

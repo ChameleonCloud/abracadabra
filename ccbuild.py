@@ -57,7 +57,7 @@ def get_local_rev(path):
     return head
 
 
-def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_version='cuda9', is_kvm=False, session):
+def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_version='cuda10', is_kvm=False, session):
     if not revision.strip():
         raise ValueError('must provide revision to use')
 
@@ -248,7 +248,7 @@ def main(argv=None):
     #     help='Only build if the variant revision isn\'t already in Glance')
     parser.add_argument('--variant', type=str, default='base',
         help='Image variant to build.')
-    parser.add_argument('--cuda-version', type=str, default='cuda9',
+    parser.add_argument('--cuda-version', type=str, default='cuda10',
         help='CUDA version to install. Ignore if the variant is not gpu.')
     parser.add_argument('--glance-info', type=str,
         help='Dump a JSON to this path with the Glance info in it')

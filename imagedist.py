@@ -69,6 +69,7 @@ VARIANT_NAME = {
 CUDA_VERSION = {
     'cuda8': '8',
     'cuda9': '9',
+    'cuda10': '10',
 }
 
 

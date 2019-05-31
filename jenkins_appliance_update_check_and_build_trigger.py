@@ -20,12 +20,12 @@ import whatsnew
 
 PRODUCTION_NAMES_AND_SITES = {'CC-CentOS7': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'centos7', 'resource_type': 'compute_haswell', 'build': 'base'},
                               'CC-CentOS7-CUDA9': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'gpu_p100', 'build': 'gpu'},
+                              'CC-CentOS7-CUDA10': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'gpu_p100', 'build': 'gpu'},
                               'CC-CentOS7-FPGA UC': {'sites': ['uc'], 'os': 'centos7', 'resource_type': 'fpga', 'build': 'fpga'},
                               'CC-CentOS7-FPGA TACC': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'fpga', 'build': 'fpga'},
                               'CC-Ubuntu14.04': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'ubuntu-trusty', 'resource_type': 'compute_haswell', 'build': 'base'},
                               'CC-Ubuntu16.04': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'ubuntu-xenial', 'resource_type': 'compute_haswell', 'build': 'base'},
-                              'CC-Ubuntu16.04-CUDA8': {'sites': ['tacc'], 'os': 'ubuntu-xenial', 'resource_type': 'gpu_p100', 'build': 'gpu'},
-                              'CC-Ubuntu16.04-CUDA9': {'sites': ['tacc'], 'os': 'ubuntu-xenial', 'resource_type': 'gpu_p100', 'build': 'gpu'},
+                              'CC-Ubuntu16.04-CUDA10': {'sites': ['tacc'], 'os': 'ubuntu-xenial', 'resource_type': 'gpu_p100', 'build': 'gpu'},
                               'CC-Ubuntu16.04-ARM64': {'sites': ['tacc'], 'os': 'ubuntu-xenial', 'resource_type': 'arm64', 'build': 'arm64'}
                               }
 
@@ -115,14 +115,16 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
         build_os = build_os.split('-')
         params = '{} {}'.format(build_os[1], PRODUCTION_NAMES_AND_SITES[production_name]['build'])
     
-    command = '\n'.join(['#!/bin/bash',
-                         'rm build.log',
-                         'source {cctest_openrc}'.format(cctest_openrc=cctest_openrc),
-                         'export SSH_KEY_FILE={key_file}'.format(key_file=jenkins_location + '/ssh.key'),
-                         'export SSH_KEY_NAME={key_name}'.format(key_name=jenkinshelper.SITE_KEY_NAME_MAP[booking_site]),
-                         'export EXISTING_LEASE={lease_id}',
-                         cuda_export,
-                         './{build_script} {params}'.format(build_script=build_script,params=params)])
+    command_list = ['#!/bin/bash',
+                    'rm build.log',
+                    'source {cctest_openrc}'.format(cctest_openrc=cctest_openrc),
+                    'export SSH_KEY_FILE={key_file}'.format(key_file=jenkins_location + '/ssh.key'),
+                    'export SSH_KEY_NAME={key_name}'.format(key_name=jenkinshelper.SITE_KEY_NAME_MAP[booking_site]),
+                    'export EXISTING_LEASE={lease_id}',
+                    cuda_export,
+                    './{build_script} {params}'.format(build_script=build_script,params=params)]
+    
+    command = '\n'.join(command_list)
     
     jenkinshelper.update_env_variables_from_file(cctest_openrc)   
     reserve_resource_args = {'booking_site': booking_site,
@@ -134,6 +136,13 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
                              'searching_feq_in_min': 60,
                              'exec_command': command} 
     jenkinshelper.reserve_resource(**reserve_resource_args)
+    
+    if 'kvm' in detail['site_detail'].keys():
+        command_list.insert(6, 'export KVM=true')
+        jenkinshelper.update_env_variables_from_file(cctest_openrc)
+        reserve_resource_args['job_name'] = production_name.lower() + '-kvm-builder'
+        reserve_resource_args['job_config_file'] = jenkins_location + '/' + jenkinshelper.JENKINS_JOB_CONFIG_FILE.format(job_name=reserve_resource_args['job_name'])
+        jenkinshelper.reserve_resource(**reserve_resource_args)
 
 def do_sync(auth_data, production_name, detail):
     production_name = production_name.split(' ')[0]
