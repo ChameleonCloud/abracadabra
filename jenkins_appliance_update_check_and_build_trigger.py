@@ -139,9 +139,11 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
     
     if 'kvm' in detail['site_detail'].keys():
         command_list.insert(6, 'export KVM=true')
+        kvm_command = '\n'.join(command_list)
         jenkinshelper.update_env_variables_from_file(cctest_openrc)
         reserve_resource_args['job_name'] = production_name.lower() + '-kvm-builder'
         reserve_resource_args['job_config_file'] = jenkins_location + '/' + jenkinshelper.JENKINS_JOB_CONFIG_FILE.format(job_name=reserve_resource_args['job_name'])
+        reserve_resource_args['exec_command'] = kvm_command
         jenkinshelper.reserve_resource(**reserve_resource_args)
 
 def do_sync(auth_data, production_name, detail):
