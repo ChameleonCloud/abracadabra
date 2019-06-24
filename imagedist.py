@@ -256,6 +256,8 @@ def main(argv=None):
         query = {
             'build-os': distro,
             'status': 'active', # to prevent "queued" images, though we handle the situation in "copy_image" function
+            'build-variant': variant,
+            'build-kvm': 'False',
         }
         cuda_version = None
         if variant.startswith('gpu'):
@@ -264,9 +266,10 @@ def main(argv=None):
             cuda_version = variant_cuda[1]
             query['build-variant'] = variant
             query['build-cuda-version'] = cuda_version
-        else:
-            query['build-variant'] = variant
-
+            
+        if 'kvm' in args.target:
+            query['build-kvm'] = 'True' 
+            
         matching_images = glance.images(auths[source_site], query=query)
         matching_images.sort(reverse=True, key=operator.itemgetter('created_at'))
         latest_image = matching_images[0]

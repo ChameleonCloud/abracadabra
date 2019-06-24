@@ -302,6 +302,7 @@ def main(argv=None):
         'build-repo': repo_location,
         'build-repo-commit': commit,
         'build-tag': BUILD_TAG,
+        'build-kvm': str(args.kvm),
     }
     if args.variant == 'gpu':
         metadata['build-cuda-version'] = args.cuda_version
