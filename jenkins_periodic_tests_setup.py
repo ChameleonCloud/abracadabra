@@ -6,18 +6,18 @@ import sys
 
 import jenkinshelper
 
-IMAGE_TEST_MATRIX = {'compute_haswell': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu14.04'],
-                     'compute_skylake': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu14.04'],
-                     'compute_haswell_ib': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu14.04'],
-                     'storage': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu14.04'],
-                     'storage_hierarchy': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu14.04'],
-                     'gpu_p100': ['CC-Ubuntu16.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
-                     'gpu_p100_nvlink': ['CC-Ubuntu16.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
-                     'gpu_k80': ['CC-Ubuntu16.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
-                     'gpu_m40': ['CC-Ubuntu16.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
+IMAGE_TEST_MATRIX = {'compute_haswell': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu18.04'],
+                     'compute_skylake': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu18.04'],
+                     'compute_haswell_ib': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu18.04'],
+                     'storage': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu18.04'],
+                     'storage_hierarchy': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu18.04'],
+                     'gpu_p100': ['CC-Ubuntu16.04-CUDA10', 'CC-Ubuntu18.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
+                     'gpu_p100_nvlink': ['CC-Ubuntu16.04-CUDA10', 'CC-Ubuntu18.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
+                     'gpu_k80': ['CC-Ubuntu16.04-CUDA10', 'CC-Ubuntu18.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
+                     'gpu_m40': ['CC-Ubuntu16.04-CUDA10', 'CC-Ubuntu18.04-CUDA10', 'CC-CentOS7-CUDA9', 'CC-CentOS7-CUDA10'],
                      'fpga': ['CC-CentOS7-FPGA'], # two images at two different sites
-                     'lowpower_xeon': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu14.04'],
-                     'atom': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu14.04'],
+                     'lowpower_xeon': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu18.04'],
+                     'atom': ['CC-CentOS7', 'CC-Ubuntu16.04', 'CC-Ubuntu18.04'],
                      'arm64': ['CC-Ubuntu16.04-ARM64']
                      }
 
