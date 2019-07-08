@@ -48,7 +48,7 @@ def get_required_action(auth_data, production_name):
     for site in PRODUCTION_NAMES_AND_SITES[production_name]['sites']:
         auth = Auth(auth_data[site])
         
-        images = glance.images(auth, {'name': actual_production_name})
+        images = glance.images(auth, {'name': actual_production_name, 'visibility': 'public'})
     
         if len(images) > 1:
             raise ValueError('More than one {} images found at {} site!'.format(actual_production_name, site))
@@ -84,6 +84,8 @@ def latest_base(os):
         return whatsnew.newest_ubuntu('xenial')
     elif os == 'ubuntu-trusty':
         return whatsnew.newest_ubuntu('trusty')
+    elif os == 'ubuntu-bionic':
+        return whatsnew.newest_ubuntu('bionic')
     else:
         raise ValueError('Unknown os {}'.format(os))
     
