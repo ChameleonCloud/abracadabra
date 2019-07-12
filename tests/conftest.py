@@ -1,6 +1,9 @@
 import collections
+import errno
 import os
+import paramiko
 import secrets
+import socket
 import time
 import traceback
 
@@ -174,7 +177,7 @@ def wait(host, username='cc', **shell_kwargs):
     print(f'wait({host!r}, username={username!r}, **{shell_kwargs!r})')
 
     error_counts = collections.defaultdict(int)
-    for attempt in range(30):
+    for attempt in range(100):
         try:
             shell = spur.SshShell(
                 hostname=host,
