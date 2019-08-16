@@ -199,12 +199,18 @@ def main(argv=None):
     parser.add_argument('auth_json', type=str,
         help='File with auth info in JSON format for all sites.')
     
+    parser.add_argument('--skip', type=str, help='skip appliances; comma separated', default=None)
+    
     args = parser.parse_args(argv[1:])
+    
+    skip_appliances = []
+    if args.skip:
+        skip_appliances = args.skip.split(',')
 
     with open(args.auth_json) as f:
         auth_data = json.load(f)
 
-    for image_name in PRODUCTION_NAMES_AND_SITES.keys():
+    for image_name in [item for item in PRODUCTION_NAMES_AND_SITES.keys() if item not in skip_appliances]:
         action_code, detail = get_required_action(auth_data['auths'], image_name)
         print('---------{}---------'.format(image_name))
         print(json.dumps(detail, indent=4, sort_keys=True))

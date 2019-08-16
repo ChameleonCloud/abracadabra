@@ -266,3 +266,14 @@ def skip_by_region(request):
         req_region = request.node.get_closest_marker('require_region').args[0]
         if os.environ['OS_REGION_NAME'] != req_region:
             pytest.skip('test only for region "{}", but current region is "{}"'.format(req_region, os.environ['OS_REGION_NAME']))
+            
+@pytest.fixture(autouse=True)
+def skip_by_appliance_harware_combination(request, image):
+    node_type = request.config.getoption('--node-type')
+    image_os = image['os']
+    combo = image_os + '+' + node_type
+    if request.node.get_closest_marker('skip_os_harware_combination'):
+        skip = request.node.get_closest_marker('skip_os_harware_combination').args[0]
+        if combo == skip or combo in skip:
+            pytest.skip('test skipped for {} + {} combination'.format(image_os, node_type))
+    

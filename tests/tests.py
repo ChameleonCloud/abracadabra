@@ -17,23 +17,6 @@ def test_cc_snapshot_sudowarn(server, shell):
     assert result.return_code == 1
     assert 'root' in result.output or 'sudo' in result.output
 
-
-# test is stalling, probably waiting for input. snapshot should be
-# reading the envvars?
-# @pytest.mark.timeout(30)
-# def test_cc_snapshot_auth_fast_fail(server, shell):
-#     result = shell.run(['sudo', 'cc-snapshot'],
-#         encoding='utf-8',
-#         allow_error=True,
-#         update_env={
-#             'OS_USERNAME': 'not-a-real-user',
-#             'OS_PASSWORD': 'not-a-password-if-it-is-thats-crazy',
-#         },
-#     )
-#     assert result.return_code == 1
-#     assert 'check username' in result.output
-
-
 def test_cc_checks(server, shell):
     result = shell.run(['sudo', 'cc-checks'])
     assert result.return_code == 0
@@ -88,6 +71,7 @@ def test_uids(server, shell):
 
 @pytest.mark.require_os(['centos7', 'ubuntu-xenial', 'ubuntu-bionic']) # trusty doesn't have RAPL
 @pytest.mark.skip_variant('arm64')
+@pytest.mark.skip_os_harware_combination('ubuntu-xenial+compute_skylake') # kernel version is too low
 def test_etrace2(server, shell):
     result = shell.run(['etrace2', 'sleep', '1'], encoding='utf-8')
     assert 'ETRACE2' in result.output
