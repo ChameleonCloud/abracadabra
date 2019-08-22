@@ -24,7 +24,7 @@ def test_hello_world(uselease, keyname):
                                     exit_delay=60,
                                     stack_name='appliance-test-hello-world',
                                     parameters={
-                                        'reservation_id': lease.reservation,
+                                        'reservation_id': lease.reservations[0]['id'],
                                         'key_name': keyname
                                     })
         with stack:

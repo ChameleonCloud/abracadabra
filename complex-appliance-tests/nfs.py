@@ -24,7 +24,7 @@ def test_nfs(uselease, keyname):
                                     exit_delay=60,
                                     stack_name='appliance-test-nfs',
                                     parameters={
-                                        'reservation_id': lease.reservation,
+                                        'reservation_id': lease.reservations[0]['id'],
                                         'key_name': keyname,
                                         'nfs_client_count': 2
                                     })

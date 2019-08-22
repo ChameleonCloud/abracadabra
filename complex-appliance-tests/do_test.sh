@@ -26,11 +26,12 @@ pip install --upgrade pip > pip.log
 pip --version
 pip install --requirement requirements.txt >> pip.log
 
+# add -s to disable all capturing; pytest doesn't allow stdin, but fabric uses stdin
 if [ $# == 2 ]; then
-	pytest "${COMPLEX_APPLIANCE_NAME}.py" --key-name=${KEY_NAME}
+	pytest -s "${COMPLEX_APPLIANCE_NAME}.py" --key-name=${KEY_NAME}
 elif [ $# == 3 ]; then
 	LEASE_ID=$3
-	pytest "${COMPLEX_APPLIANCE_NAME}.py" --use-lease=${LEASE_ID} --key-name=${KEY_NAME}
+	pytest -s "${COMPLEX_APPLIANCE_NAME}.py" --use-lease=${LEASE_ID} --key-name=${KEY_NAME}
 	cd ..
 	python cleanup_auto_created_lease.py --lease-id ${LEASE_ID}
 fi
