@@ -124,6 +124,7 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
                     'export SSH_KEY_FILE={key_file}'.format(key_file=jenkins_location + '/ssh.key'),
                     'export SSH_KEY_NAME={key_name}'.format(key_name=jenkinshelper.SITE_KEY_NAME_MAP[booking_site]),
                     'export EXISTING_LEASE={lease_id}',
+                    'export NODE_TYPE={node_type}'.format(node_type=node_type),
                     cuda_export,
                     './{build_script} {params}'.format(build_script=build_script,params=params)]
     
