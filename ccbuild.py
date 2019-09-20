@@ -78,7 +78,7 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
         if region == 'CHI@TACC':
             objects = ['aocl-rte-16.0.0-1.x86_64.rpm', 'nalla_pcie_16.0.2.tgz']
         elif region == 'CHI@UC':
-            objects = ['aoc-env-de5anet.sh', 'AOCLProSetup-17.1.0.240-linux.run', 'de5a_net_e1.tar.gz']
+            objects = ['aocl-pro-rte-17.1.0-240.x86_64.rpm', 'QuartusProProgrammerSetup-17.1.0.240-linux.run', 'de5a_net_e1.tar.gz']
         else:
             raise RuntimeError('Region incorrect!')
         run('mkdir -p {}'.format(tmp_fpga_dir))
