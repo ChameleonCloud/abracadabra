@@ -126,6 +126,7 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
                     'export EXISTING_LEASE={lease_id}',
                     'export NODE_TYPE={node_type}'.format(node_type=node_type),
                     cuda_export,
+                    'sleep $[ ( $RANDOM % 100 ) + 1 ]s',
                     './{build_script} {params}'.format(build_script=build_script,params=params)]
     
     command = '\n'.join(command_list)
