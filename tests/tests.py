@@ -1,5 +1,7 @@
 import json
 import os
+import random
+import string
 
 import pytest
 
@@ -8,7 +10,6 @@ def test_cc_snapshot_exists(server, shell):
     result = shell.run(['which', 'cc-snapshot'], encoding='utf-8')
     assert result.return_code == 0
 
-
 def test_cc_snapshot_sudowarn(server, shell):
     result = shell.run(['cc-snapshot'],
         encoding='utf-8',
@@ -16,6 +17,24 @@ def test_cc_snapshot_sudowarn(server, shell):
     )
     assert result.return_code == 1
     assert 'root' in result.output or 'sudo' in result.output
+    
+def test_cc_snapshot(server, shell):
+    image_name = 'image-test-{}'.format(''.join(random.choice(string.ascii_lowercase) for i in range(6)))
+
+    # update to latest cc-snapshot
+    shell.run(['curl', '-O', 'https://raw.githubusercontent.com/ChameleonCloud/cc-snapshot/master/cc-snapshot'])
+    shell.run(['sudo', 'mv', 'cc-snapshot', '/usr/bin/'])
+    shell.run(['sudo', 'chmod', '+x', '/usr/bin/cc-snapshot'])
+
+    process = shell.spawn(["sudo", "cc-snapshot", image_name])
+    process.stdin_write(os.environ['OS_USERNAME'] + '\n')
+    process.stdin_write(os.environ['OS_PASSWORD'] + '\n')
+    result = process.wait_for_result()
+
+    assert result.return_code == 0
+    # remove image
+    result = shell.run(['openstack', 'image', 'delete', image_name, '--os-auth-url', os.environ['OS_AUTH_URL'],'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-project-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '--os-identity-api-version', '3'])
+    assert result.return_code == 0
 
 def test_cc_checks(server, shell):
     result = shell.run(['sudo', 'cc-checks'])
