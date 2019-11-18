@@ -43,7 +43,8 @@ pip install -r requirements.txt >> pip.log
 
 pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
 
-IMAGEINFO_FILE=$(pwd)/imageinfo.json
+IMAGEINFO_FILE_TAG=$(openssl rand -base64 12)
+IMAGEINFO_FILE=$(pwd)/imageinfo.${IMAGEINFO_FILE_TAG}.json
 LOCAL_REPO=CC-CentOS7
 REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS7.git
 REMOTE_BRANCH=master
@@ -53,7 +54,7 @@ if ! [ -z ${BUILDER_BRANCH:+x} ]; then
 fi
 
 # clean up from other builds
-rm -f build.log $IMAGEINFO_FILE
+rm -f build.log
 
 if [ -d $LOCAL_REPO ]
 then
@@ -111,6 +112,7 @@ python ccbuild.py $BUILD_ARGS $LOCAL_REPO
 
 # skip the rest for kvm
 if ! [ -z ${KVM:+x} ] && $KVM; then
+  rm -f ${IMAGEINFO_FILE}
   exit 0
 fi
 
@@ -121,6 +123,7 @@ cd tests
 date
 TEST_BUILD_ARGS+="--image=$(jq -r .\"id\" $IMAGEINFO_FILE)"
 pytest $TEST_BUILD_ARGS
+rm -f ${IMAGEINFO_FILE}
 
 cd ..
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
