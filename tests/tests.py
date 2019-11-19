@@ -26,7 +26,7 @@ def test_cc_snapshot(server, shell):
     shell.run(['sudo', 'mv', 'cc-snapshot', '/usr/bin/'])
     shell.run(['sudo', 'chmod', '+x', '/usr/bin/cc-snapshot'])
 
-    process = shell.spawn(["sudo", "cc-snapshot", image_name])
+    process = shell.spawn(["sudo", "cc-snapshot", "-f", image_name])
     process.stdin_write(os.environ['OS_USERNAME'] + '\n')
     process.stdin_write(os.environ['OS_PASSWORD'] + '\n')
     result = process.wait_for_result()
