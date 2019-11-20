@@ -2,6 +2,7 @@ import json
 import os
 import random
 import string
+import sys
 
 import pytest
 
@@ -22,11 +23,14 @@ def test_cc_snapshot(server, shell):
     image_name = 'image-test-{}'.format(''.join(random.choice(string.ascii_lowercase) for i in range(6)))
 
     # update to latest cc-snapshot
-    shell.run(['curl', '-O', 'https://raw.githubusercontent.com/ChameleonCloud/cc-snapshot/master/cc-snapshot'])
-    shell.run(['sudo', 'mv', 'cc-snapshot', '/usr/bin/'])
-    shell.run(['sudo', 'chmod', '+x', '/usr/bin/cc-snapshot'])
+    result = shell.run(['curl', '-O', 'https://raw.githubusercontent.com/ChameleonCloud/cc-snapshot/master/cc-snapshot'])
+    assert result.return_code == 0
+    result = shell.run(['sudo', 'mv', 'cc-snapshot', '/usr/bin/'])
+    assert result.return_code == 0
+    result = shell.run(['sudo', 'chmod', '+x', '/usr/bin/cc-snapshot'])
+    assert result.return_code == 0
 
-    process = shell.spawn(["sudo", "cc-snapshot", "-f", image_name])
+    process = shell.spawn(["sudo", "cc-snapshot", "-f", image_name], stdout=sys.stdout)
     process.stdin_write(os.environ['OS_USERNAME'] + '\n')
     process.stdin_write(os.environ['OS_PASSWORD'] + '\n')
     result = process.wait_for_result()
