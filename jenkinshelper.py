@@ -101,12 +101,14 @@ def reserve_resource(booking_site, node_type, lease_name_prefix, job_name, job_c
         
         # jenkins reload configuration from disk
         # we have CSRF protection, so we need to get crumb token first before reload
+        # crumbs are only valid within a created web session, see https://github.com/spinnaker/spinnaker/issues/2067 and https://github.com/spinnaker/spinnaker.github.io/pull/1512
         jenkins_url = JENKINS_URL.format(username = os.environ['OS_USERNAME'], password = urlparse.quote(os.environ['OS_PASSWORD']))
-        crumb = requests.get('{jenkins_url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)'.format(jenkins_url = jenkins_url)).text
+        sess = requests.Session()
+        crumb = sess.get('{jenkins_url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)'.format(jenkins_url = jenkins_url)).text
         headers = {crumb.split(':')[0]: crumb.split(':')[1]}
-        r = requests.post(JENKINS_RELOAD_JOB_URL.format(username = os.environ['OS_USERNAME'], 
-                                                        password = urlparse.quote(os.environ['OS_PASSWORD']),
-                                                        job_name = job_name),
+        r = sess.post(JENKINS_RELOAD_JOB_URL.format(username = os.environ['OS_USERNAME'], 
+                                                    password = urlparse.quote(os.environ['OS_PASSWORD']),
+                                                    job_name = job_name),
                           headers = headers)
         if r.status_code != 200:
             raise RuntimeError('Lease created with id {} at site {}, but failed to reload Jenkins page.'.format(lease_id, booking_site))
