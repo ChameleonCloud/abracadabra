@@ -55,7 +55,7 @@ BASE_PROPS = {
     'visibility',
 }
 SITE_AUTH_HOSTS = {
-    'kvm': 'openstack.tacc.chameleoncloud.org',
+    'kvm': 'kvm.tacc.chameleoncloud.org',
     'tacc': 'chi.tacc.chameleoncloud.org',
     'uc': 'chi.uc.chameleoncloud.org',
     'dev': 'dev.tacc.chameleoncloud.org',
@@ -245,7 +245,13 @@ def main(argv=None):
 
     auths = {}
     for site, auth_info in auth_data['auths'].items():
-        auths[site] = Auth(auth_info)
+        try:
+            auths[site] = Auth(auth_info)
+        except Exception as e:
+            if site == 'dev':
+                print('dev authentication failed!')
+            else: 
+                raise e
 
     if args.image:
         source_site, source_id = args.image
