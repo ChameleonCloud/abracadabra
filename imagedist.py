@@ -150,7 +150,7 @@ def copy_image(source_auth, target_auths, source_image_id):
                 for k in list_keys:
                     if k.startswith('os_'):
                         extra.pop(k)
-            new_image = glance.image_create(target_auth, source_image['name'], public=public, extra=extra)
+            new_image = glance.image_create(target_auth, source_image['name'], public=public, extra=extra, disk_format=source_image['disk_format'])
             try:
                 curl_upload = glance.image_upload_curl(target_auth, new_image['id'], img_file)
                 proc = subprocess.run(shlex.split(curl_upload), check=True)

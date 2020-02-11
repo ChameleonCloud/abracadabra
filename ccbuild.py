@@ -194,15 +194,28 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
     }
 
 
-def do_upload(ip, rc, metadata, **build_results):
+def do_upload(ip, rc, metadata, disk_format, **build_results):
     remote = RemoteControl(ip=ip)
 
     ham_auth = Auth(rc)
+    
+    if disk_format != 'qcow2':
+        converted_image = None
+        if build_results['image_loc'].endswith('.qcow2'):
+            converted_image = build_results['image_loc'][:-6] + '.img'
+        else:
+            converted_image = build_results['image_loc'] + '.img'
+        out = remote.run('qemu-img convert -f qcow2 -O {} {} {}'.format(disk_format, build_results['image_loc'], converted_image))
+        if out.failed:
+            raise RuntimeError('converting image failed')
+        build_results['image_loc'] = converted_image
+        build_results['checksum'] = remote.run('md5sum {}'.format(converted_image)).split()[0].strip()
 
     image = glance.image_create(
         ham_auth,
         'image-{}-{}'.format(metadata['build-os'], metadata['build-tag']),
         extra=metadata,
+        disk_format=disk_format,
     )
 
     upload_command = glance.image_upload_curl(ham_auth, image['id'], build_results['image_loc'])
@@ -257,6 +270,7 @@ def main(argv=None):
     parser.add_argument('build_repo', type=str,
         help='Path of repo to push and build.')
     parser.add_argument('--kvm', action='store_true', help='Present if build image for KVM site') 
+    parser.add_argument('--disk-format', type=str, default='qcow2', help='Disk format of the image')
 
     args = parser.parse_args()
     session, rc = auth.session_from_args(args, rc=True)
@@ -331,7 +345,7 @@ def main(argv=None):
         build_results = do_build(server.ip, args.build_repo, commit, image_revision, metadata, variant=args.variant, cuda_version=args.cuda_version, is_kvm=args.kvm, session=session)
         pprint(build_results)
 
-        glance_results = do_upload(server.ip, rc, metadata, **build_results)
+        glance_results = do_upload(server.ip, rc, metadata, args.disk_format, **build_results)
         pprint(glance_results)
 
         if args.glance_info:

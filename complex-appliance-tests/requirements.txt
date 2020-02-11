@@ -5,6 +5,7 @@ python-glanceclient
 python-neutronclient
 python-novaclient>=7.1.0,<8.0.0 # still with floating ip management
 python-heatclient
+fabric3
 
 pytest
 pytest-timeout

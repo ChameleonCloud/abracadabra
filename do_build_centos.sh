@@ -104,7 +104,8 @@ if ! [ -z ${CUDA_VERSION:+x} ]; then
 fi
 
 if ! [ -z ${KVM:+x} ] && $KVM; then
-  BUILD_ARGS+="--kvm"
+  BUILD_ARGS+="--kvm "
+  BUILD_ARGS+="--disk-format raw "
 fi
 
 date # to compare timestamps if there are failures
