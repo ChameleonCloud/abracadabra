@@ -7,9 +7,8 @@ from html.parser import HTMLParser
 
 import requests
 
-PATH = 'https://cloud.centos.org/centos/7/images/'
-INDEX = PATH + 'image-index'
-SUMS = PATH + 'sha256sum.txt'
+PATHS = {7: 'https://cloud.centos.org/centos/7/images/',
+         8: 'https://cloud.centos.org/centos/8/x86_64/images/'}
 
 class TableParser(HTMLParser):
     def __init__(self):
@@ -28,48 +27,14 @@ class TableParser(HTMLParser):
     def handle_endtag(self, tag):
         self.in_td = False
 
-
-def centos_sums():
-    response = requests.get(SUMS)
-    response.raise_for_status()
-    sums = response.text
-    sums = {
-        filename.strip(): checksum.strip()
-        for checksum, filename
-        in (
-            line.split(' ', 1)
-            for line
-            in sums.splitlines()
-        )
-    }
-    return sums
-
-
-def centos_images():
-    response = requests.get(INDEX)
-    response.raise_for_status()
-    index = io.StringIO(response.text)
-    cp = configparser.ConfigParser()
-    cp.readfp(index)
-    data = {sec: dict(cp.items(sec)) for sec in cp.sections()}
-    return data
-
-
-def image_index():
-    data = centos_images()
-    sums = centos_sums()
-
-    for sec in data:
-        data[sec]['url'] = PATH + data[sec]['file']
-        data[sec]['sha256_xz'] = sums[data[sec]['file']]
-    return data
-
-
-def newest_image():
+def newest_centos(release):
     p = TableParser()
-    p.feed(requests.get(PATH).text)
+    p.feed(requests.get(PATHS[release]).text)
     
-    genericcloud_file_pattern = r'^CentOS-7-x86_64-GenericCloud-(\d[0-9_-]*).qcow2.xz$'
+    if release == 7:
+        genericcloud_file_pattern = r'^CentOS-7-x86_64-GenericCloud-(\d[0-9_-]*).qcow2.xz$'
+    if release == 8:
+        genericcloud_file_pattern = r'^CentOS-8-GenericCloud-(\d[0-9.]*)-(.*).qcow2$'
     last_modified_pattern = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})$'
     image_date_dict = {}
     current_file = None
@@ -85,9 +50,9 @@ def newest_image():
             
     latest_file_name = max(image_date_dict.items(), key=operator.itemgetter(1))[0]
     
-    for image in image_index().values():
-        if image['file'] == latest_file_name:
-            return image
+    m = re.search(genericcloud_file_pattern, latest_file_name)
+    if m:
+        return {'revision': m.group(1)}
             
     return None
 
@@ -96,7 +61,7 @@ def centos7():
     '''
     Returns the latest version of the CentOS 7 cloud image.
     '''
-    return newest_image()
+    return newest_centos(7)
 
 
 # https://github.com/openstack/diskimage-builder/blob/master/diskimage_builder/elements/ubuntu/root.d/10-cache-ubuntu-tarball#L23

@@ -252,13 +252,10 @@ def main(argv=None):
         help='Name or ID of image to launch.')
     parser.add_argument('--no-clean', action='store_true',
         help='Do not clean up on failure.')
-    parser.add_argument('--centos-revision', type=str,
-        help='CentOS 7 revision to use. Defaults to latest.')
+    parser.add_argument('--centos-release', type=int, choices=[7,8], default=8,
+        help='CentOS release. Defaults to 8.')
     parser.add_argument('--ubuntu-release', type=str,
-        help='Build an Ubuntu image from provided release. Don\'t combine '
-             'with --centos-revision', choices=UBUNTU_VERSIONS)
-    # parser.add_argument('--force', action='store_true',
-    #     help='Only build if the variant revision isn\'t already in Glance')
+        help='Build an Ubuntu image from provided release.', choices=UBUNTU_VERSIONS)
     parser.add_argument('--variant', type=str, default='base',
         help='Image variant to build.')
     parser.add_argument('--cuda-version', type=str, default='cuda10',
@@ -278,7 +275,7 @@ def main(argv=None):
     if not args.key_name:
         args.key_name = os.environ.get('SSH_KEY_NAME', 'default')
 
-    if args.centos_revision and args.ubuntu_release:
+    if args.centos_release and args.ubuntu_release:
         print('Only specify Ubuntu or CentOS options.', file=sys.stderr)
         return 1
     elif args.ubuntu_release:
@@ -286,20 +283,17 @@ def main(argv=None):
         image_revision = whatsnew.newest_ubuntu(args.ubuntu_release)['revision']
     else:
         build_centos = True
-        image_revision = args.centos_revision if args.centos_revision else LATEST
+        image_revision = whatsnew.newest_centos(args.centos_release)['revision']
 
     if build_centos:
-        os_slug = 'centos7'
-        repo_location = 'https://github.com/ChameleonCloud/CC-CentOS7'
+        if args.centos_release == 7:
+            os_slug = 'centos7'
+            repo_location = 'https://github.com/ChameleonCloud/CC-CentOS7'
+        elif args.centos_release == 8:
+            os_slug = 'centos8'
+            repo_location = 'https://github.com/ChameleonCloud/CC-CentOS'
 
-        if image_revision == LATEST:
-            image_revision = whatsnew.newest_image()['revision']
-            print('Latest CentOS 7 cloud image revision: {}'.format(image_revision))
-        else:
-            available_revs = sorted(i['revision'] for i in whatsnew.image_index().values())
-            if args.centos_revision not in available_revs:
-                print('WARNING: Requested revision "{}" not found in index. Available revisions: {}'.format(image_revision, available_revs), file=sys.stderr)
-                # return 1
+        print('Latest CentOS {} cloud image revision: {}'.format(args.centos_release, image_revision))
     else:
         os_slug = 'ubuntu-{}'.format(args.ubuntu_release)
         number = UBUNTU_VERSIONS[args.ubuntu_release]

@@ -19,8 +19,10 @@ import jenkinshelper
 import whatsnew
 
 PRODUCTION_NAMES_AND_SITES = {'CC-CentOS7': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'centos7', 'resource_type': 'compute_haswell', 'build': 'base'},
+                              'CC-CentOS8': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'centos8', 'resource_type': 'compute_haswell', 'build': 'base'},
                               'CC-CentOS7-CUDA9': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'gpu_p100', 'build': 'gpu'},
                               'CC-CentOS7-CUDA10': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'gpu_p100', 'build': 'gpu'},
+                              'CC-CentOS8-CUDA10': {'sites': ['tacc'], 'os': 'centos8', 'resource_type': 'gpu_p100', 'build': 'gpu'},
                               'CC-CentOS7-FPGA UC': {'sites': ['uc'], 'os': 'centos7', 'resource_type': 'fpga', 'build': 'fpga'},
                               'CC-CentOS7-FPGA TACC': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'fpga', 'build': 'fpga'},
                               'CC-Ubuntu16.04': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'ubuntu-xenial', 'resource_type': 'compute_haswell', 'build': 'base'},
@@ -108,10 +110,12 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
         cuda_export = 'export CUDA_VERSION={cuda_version}'.format(cuda_version=cuda_version)
     build_os = PRODUCTION_NAMES_AND_SITES[production_name]['os']
     build_script = None
+    extra = ''
     if 'centos' in build_os: 
-        # centos7
+        # centos
         build_script = 'do_build_centos.sh'
         params = PRODUCTION_NAMES_AND_SITES[production_name]['build']
+        extra = 'export CENTOS_VERSION={}'.format(build_os.replace('centos', ''))
     elif 'ubuntu' in build_os:
         # ubuntu
         build_script = 'do_build_ubuntu.sh'
@@ -125,6 +129,7 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
                     'export SSH_KEY_NAME={key_name}'.format(key_name=jenkinshelper.SITE_KEY_NAME_MAP[booking_site]),
                     'export EXISTING_LEASE={lease_id}',
                     'export NODE_TYPE={node_type}'.format(node_type=node_type),
+                    extra,
                     cuda_export,
                     'sleep $[ ( $RANDOM % 100 ) + 1 ]s',
                     './{build_script} {params}'.format(build_script=build_script,params=params)]

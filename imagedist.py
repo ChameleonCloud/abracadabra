@@ -32,6 +32,7 @@ BASE_NAME = {
     'ubuntu-xenial': 'Ubuntu16.04',
     'ubuntu-bionic': 'Ubuntu18.04',
     'centos7': 'CentOS7',
+    'centos8': 'CentOS8',
 }
 BASE_PROPS = {
     'checksum',

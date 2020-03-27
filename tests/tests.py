@@ -83,7 +83,7 @@ def test_provenance_data(server, shell, image):
     assert image['variant'] == provenance_data['build-variant']
 
 
-@pytest.mark.require_os(['centos7', 'ubuntu-xenial', 'ubuntu-bionic']) # trusty cloud-init is too old
+@pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-xenial', 'ubuntu-bionic']) # trusty cloud-init is too old
 def test_uids(server, shell):
     result = shell.run(['id', '-u', 'cc'], encoding='utf-8')
     assert int(result.output.strip()) == 1000
@@ -92,7 +92,7 @@ def test_uids(server, shell):
     assert int(result.output.strip()) == 1010
 
 
-@pytest.mark.require_os(['centos7', 'ubuntu-xenial', 'ubuntu-bionic']) # trusty doesn't have RAPL
+@pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-xenial', 'ubuntu-bionic']) # trusty doesn't have RAPL
 @pytest.mark.skip_variant('arm64')
 @pytest.mark.skip_os_harware_combination('ubuntu-xenial+compute_skylake') # kernel version is too low
 def test_etrace2(server, shell):

@@ -45,12 +45,24 @@ pip freeze | grep hammers # hammers version (master branch, so somewhat volatile
 
 IMAGEINFO_FILE_TAG=$(openssl rand -base64 12)
 IMAGEINFO_FILE=$(pwd)/imageinfo.${IMAGEINFO_FILE_TAG}.json
-LOCAL_REPO=CC-CentOS7
-REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS7.git
+LOCAL_REPO=CC-CentOS
 REMOTE_BRANCH=master
 
 if ! [ -z ${BUILDER_BRANCH:+x} ]; then
         REMOTE_BRANCH=$BUILDER_BRANCH
+fi
+
+if [ -z ${CENTOS_VERSION:+x} ]; then
+        CENTOS_VERSION=8
+fi
+
+if [ ${CENTOS_VERSION} = 7 ]; then
+    REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS7.git
+elif [ ${CENTOS_VERSION} = 8 ]; then
+	REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS.git
+else
+	echo "Unknown CentOS version"
+	exit 0
 fi
 
 # clean up from other builds
@@ -74,7 +86,7 @@ fi
 # check the keypair exists
 nova keypair-show ${SSH_KEY_NAME:-default}
 
-BUILDER_IMAGE=${BUILDER_IMAGE:-CC-CentOS7}
+BUILDER_IMAGE=${BUILDER_IMAGE:-CC-CentOS${CENTOS_VERSION}}
 if [ $VARIANT = 'gpu' ]; then
   NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
   CUDA_VERSION=${CUDA_VERSION:-cuda10} #overrideable for other cuda versions
@@ -82,7 +94,7 @@ elif [ $VARIANT = 'fpga' ]; then
   NODE_TYPE=${NODE_TYPE:-fpga}
 fi
 
-BUILD_ARGS="--centos-revision latest "
+BUILD_ARGS="--centos-release ${CENTOS_VERSION} "
 BUILD_ARGS+="--variant $VARIANT "
 BUILD_ARGS+="--glance-info $IMAGEINFO_FILE "
 
