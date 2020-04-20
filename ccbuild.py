@@ -252,7 +252,7 @@ def main(argv=None):
         help='Name or ID of image to launch.')
     parser.add_argument('--no-clean', action='store_true',
         help='Do not clean up on failure.')
-    parser.add_argument('--centos-release', type=int, choices=[7,8], default=8,
+    parser.add_argument('--centos-release', type=int, choices=[7,8],
         help='CentOS release. Defaults to 8.')
     parser.add_argument('--ubuntu-release', type=str,
         help='Build an Ubuntu image from provided release.', choices=UBUNTU_VERSIONS)
