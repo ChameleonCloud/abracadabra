@@ -82,6 +82,8 @@ def get_required_action(auth_data, production_name):
 def latest_base(os):
     if os == 'centos7':
         return whatsnew.centos7()
+    elif os == 'centos8':
+        return whatsnew.newest_centos(8)
     elif os == 'ubuntu-xenial':
         return whatsnew.newest_ubuntu('xenial')
     elif os == 'ubuntu-trusty':
