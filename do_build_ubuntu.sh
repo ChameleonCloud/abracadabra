@@ -46,8 +46,8 @@ pip freeze | grep hammers # hammers version (master branch, so somewhat volatile
 
 IMAGEINFO_FILE_TAG=$(openssl rand -base64 12)
 IMAGEINFO_FILE=$(pwd)/imageinfo.${IMAGEINFO_FILE_TAG}.json
-LOCAL_REPO=CC-Ubuntu16.04
-REMOTE_REPO=https://github.com/ChameleonCloud/CC-Ubuntu16.04.git
+LOCAL_REPO=CC-Ubuntu
+REMOTE_REPO=https://github.com/ChameleonCloud/CC-Ubuntu.git
 REMOTE_BRANCH=master
 
 if ! [ -z ${BUILDER_BRANCH:+x} ]; then

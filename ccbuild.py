@@ -297,7 +297,7 @@ def main(argv=None):
     else:
         os_slug = 'ubuntu-{}'.format(args.ubuntu_release)
         number = UBUNTU_VERSIONS[args.ubuntu_release]
-        repo_location = 'https://github.com/ChameleonCloud/CC-Ubuntu16.04' # yes, for all versions.
+        repo_location = 'https://github.com/ChameleonCloud/CC-Ubuntu' # yes, for all versions.
 
         name = '{} ({})'.format(number, args.ubuntu_release.capitalize())
         print('Latest Ubuntu {} cloud image revision: {}'.format(name, image_revision))
