@@ -83,9 +83,9 @@ def test_provenance_data(server, shell, image):
     assert image['variant'] == provenance_data['build-variant']
 
 def test_gnocchi_cli(server, shell):
-    result = shell.run(['which', 'gnochhi'], encoding='utf-8')
+    result = shell.run(['which', 'gnocchi'], encoding='utf-8')
     assert result.return_code == 0
-    result = shell.run(['gnochhi', '--help'], encoding='utf-8')
+    result = shell.run(['gnocchi', '--help'], encoding='utf-8')
     assert result.return_code == 0
 
 @pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-xenial', 'ubuntu-bionic']) # trusty cloud-init is too old
