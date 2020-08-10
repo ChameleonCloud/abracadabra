@@ -248,7 +248,7 @@ def main(argv=None):
         help='SSH keypair name on OS used to create an instance. The envvar '
              'SSH_KEY_NAME is also looked at as a fallback, then it defaults '
              'to "default".')
-    parser.add_argument('--builder-image', type=str, default='CC-CentOS7',
+    parser.add_argument('--builder-image', type=str, default='CC-CentOS8',
         help='Name or ID of image to launch.')
     parser.add_argument('--no-clean', action='store_true',
         help='Do not clean up on failure.')
