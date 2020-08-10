@@ -56,14 +56,7 @@ if [ -z ${CENTOS_VERSION:+x} ]; then
         CENTOS_VERSION=8
 fi
 
-if [ ${CENTOS_VERSION} = 7 ]; then
-    REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS7.git
-elif [ ${CENTOS_VERSION} = 8 ]; then
-	REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS.git
-else
-	echo "Unknown CentOS version"
-	exit 0
-fi
+REMOTE_REPO=https://github.com/ChameleonCloud/CC-CentOS.git
 
 # clean up from other builds
 rm -f build.log

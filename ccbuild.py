@@ -152,7 +152,9 @@ def do_build(ip, repodir, commit, revision, metadata, *, variant='base', cuda_ve
             ubuntu_release = metadata['build-os'].split('-')[1]
             release = '--release {}'.format(ubuntu_release)
         else:
-            release = ''
+            # centos
+            centos_release = metadata['build-os'].replace('centos', '')
+            release = '--release {}'.format(centos_release)
             
         if variant == 'gpu':
             cuda = '--cuda-version {}'.format(cuda_version)
@@ -288,10 +290,9 @@ def main(argv=None):
     if build_centos:
         if args.centos_release == 7:
             os_slug = 'centos7'
-            repo_location = 'https://github.com/ChameleonCloud/CC-CentOS7'
         elif args.centos_release == 8:
             os_slug = 'centos8'
-            repo_location = 'https://github.com/ChameleonCloud/CC-CentOS'
+        repo_location = 'https://github.com/ChameleonCloud/CC-CentOS'
 
         print('Latest CentOS {} cloud image revision: {}'.format(args.centos_release, image_revision))
     else:

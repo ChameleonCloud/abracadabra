@@ -162,7 +162,7 @@ def do_sync(auth_data, production_name, detail):
     production_name = production_name.split(' ')[0]
     from_site = None
     to_site = []
-    for site in detail['site_detail'].keys().sort():
+    for site in sorted(list(detail['site_detail'].keys())):
         if detail['site_detail'][site] == detail['latest_base_release']:
             from_site = site
         else:
