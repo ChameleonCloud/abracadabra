@@ -159,7 +159,7 @@ def server(request, keystone, image):
         pytest.fail('Problem starting lease/server: {}'.format(content))
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def shell(request, server):
     ssh_key_file = os.path.expanduser(request.config.getoption('--key-file'))
     shell = spur.SshShell(
