@@ -31,8 +31,6 @@ def test_cc_snapshot(server, shell):
     assert result.return_code == 0
 
     process = shell.spawn(["sudo", "cc-snapshot", "-f", image_name], stdout=sys.stdout)
-    process.stdin_write(os.environ['OS_USERNAME'] + '\n')
-    process.stdin_write(os.environ['OS_PASSWORD'] + '\n')
     result = process.wait_for_result()
 
     assert result.return_code == 0
@@ -45,19 +43,14 @@ def test_cc_checks(server, shell):
     assert result.return_code == 0
  
 def test_cc_cloudfuse(server, shell, image):
-    credentials = 'username={},password={},projectid={},region={},authurl={}'.format(os.environ['OS_USERNAME'], 
-                                                                                  os.environ['OS_PASSWORD'], 
-                                                                                  os.environ['OS_PROJECT_ID'], 
-                                                                                  os.environ['OS_REGION_NAME'], 
-                                                                                  os.environ['OS_AUTH_URL'])
     # Test the correct installation of cloudfuse
-    result = shell.run(['cc-cloudfuse', 'mount', '-o', credentials, '-V'], allow_error=True, encoding='utf-8')
+    result = shell.run(['cc-cloudfuse', 'mount', '-V'], allow_error=True, encoding='utf-8')
     assert 'fusermount version' in result.output
     # Test mounting Object Store
     # Create mounting point
     mounting_dir_name = 'test_mounting_point'
     shell.run(['mkdir', mounting_dir_name])
-    shell.run(['cc-cloudfuse', 'mount', mounting_dir_name, '-o', credentials])
+    shell.run(['cc-cloudfuse', 'mount', mounting_dir_name])
     # Compare with swift command
     if image['os'] == 'ubuntu-trusty':
         swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'),'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '-V', '2'], encoding='utf-8', allow_error=True)
