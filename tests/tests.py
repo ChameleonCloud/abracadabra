@@ -94,7 +94,8 @@ def test_uids(server, shell):
 @pytest.mark.skip_variant('arm64')
 @pytest.mark.skip_os_harware_combination('ubuntu-xenial+compute_skylake') # kernel version is too low
 def test_etrace2(server, shell):
-    result = shell.run(['etrace2', 'sleep', '1'], encoding='utf-8')
+    # the energy files under /sys/devices/virtual/powercap/intel-rapl have root-only access
+    result = shell.run(['sudo', 'etrace2', 'sleep', '1'], encoding='utf-8')
     assert 'ETRACE2' in result.output
 
 

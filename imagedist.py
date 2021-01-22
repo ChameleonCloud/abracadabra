@@ -67,11 +67,6 @@ VARIANT_NAME = {
     'fpga': 'FPGA',
     'arm64': 'ARM64'
 }
-CUDA_VERSION = {
-    'cuda8': '8',
-    'cuda9': '9',
-    'cuda10': '10',
-}
 
 
 def production_name(image=None, os=None, variant=None, cuda_version=None):
@@ -104,7 +99,7 @@ def production_name(image=None, os=None, variant=None, cuda_version=None):
     if variant == 'CUDA':
         if cuda_version is None:
             cuda_version = image['build-cuda-version']
-        variant = '{}{}'.format(variant, CUDA_VERSION[cuda_version])
+        variant = '{}{}'.format(variant, cuda_version.replace('cuda', ''))
     
     var_delim = '-' if variant else ''
     return 'CC-{}{}{}'.format(base, var_delim, variant)
