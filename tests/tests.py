@@ -30,7 +30,7 @@ def test_cc_snapshot(server, shell):
     result = shell.run(['sudo', 'chmod', '+x', '/usr/bin/cc-snapshot'])
     assert result.return_code == 0
 
-    process = shell.spawn(["sudo", "cc-snapshot", "-f", image_name], stdout=sys.stdout)
+    process = shell.spawn(["sudo", "cc-snapshot", "-f", "-y", image_name], stdout=sys.stdout)
     result = process.wait_for_result()
 
     assert result.return_code == 0
