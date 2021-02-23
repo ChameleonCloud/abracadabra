@@ -20,16 +20,17 @@ import whatsnew
 
 PRODUCTION_NAMES_AND_SITES = {'CC-CentOS7': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'centos7', 'resource_type': 'compute_haswell', 'build': 'base'},
                               'CC-CentOS8': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'centos8', 'resource_type': 'compute_haswell', 'build': 'base'},
-                              'CC-CentOS7-CUDA9': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'gpu_p100', 'build': 'gpu'},
-                              'CC-CentOS7-CUDA10': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'gpu_p100', 'build': 'gpu'},
-                              'CC-CentOS8-CUDA10': {'sites': ['tacc'], 'os': 'centos8', 'resource_type': 'gpu_p100', 'build': 'gpu'},
+                              'CC-CentOS7-CUDA11': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'gpu_p100', 'build': 'gpu'},
+                              'CC-CentOS8-CUDA11': {'sites': ['tacc'], 'os': 'centos8', 'resource_type': 'gpu_p100', 'build': 'gpu'},
                               'CC-CentOS7-FPGA UC': {'sites': ['uc'], 'os': 'centos7', 'resource_type': 'fpga', 'build': 'fpga'},
                               'CC-CentOS7-FPGA TACC': {'sites': ['tacc'], 'os': 'centos7', 'resource_type': 'fpga', 'build': 'fpga'},
                               'CC-Ubuntu16.04': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'ubuntu-xenial', 'resource_type': 'compute_haswell', 'build': 'base'},
-                              'CC-Ubuntu16.04-CUDA10': {'sites': ['tacc'], 'os': 'ubuntu-xenial', 'resource_type': 'gpu_p100', 'build': 'gpu'},
+                              'CC-Ubuntu16.04-CUDA11': {'sites': ['tacc'], 'os': 'ubuntu-xenial', 'resource_type': 'gpu_p100', 'build': 'gpu'},
                               'CC-Ubuntu16.04-ARM64': {'sites': ['tacc'], 'os': 'ubuntu-xenial', 'resource_type': 'arm64', 'build': 'arm64'},
                               'CC-Ubuntu18.04': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'ubuntu-bionic', 'resource_type': 'compute_haswell', 'build': 'base'},
-                              'CC-Ubuntu18.04-CUDA10': {'sites': ['tacc'], 'os': 'ubuntu-bionic', 'resource_type': 'gpu_p100', 'build': 'gpu'}
+                              'CC-Ubuntu18.04-CUDA11': {'sites': ['tacc'], 'os': 'ubuntu-bionic', 'resource_type': 'gpu_p100', 'build': 'gpu'},
+                              'CC-Ubuntu20.04': {'sites': ['uc', 'tacc', 'kvm'], 'os': 'ubuntu-focal', 'resource_type': 'compute_haswell', 'build': 'base'},
+                              'CC-Ubuntu20.04-CUDA11': {'sites': ['tacc'], 'os': 'ubuntu-focal', 'resource_type': 'gpu_p100', 'build': 'gpu'}
                               }
 
 ACTION_CODE = {0: 'UP-TO-DATE',

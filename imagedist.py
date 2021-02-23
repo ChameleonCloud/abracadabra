@@ -31,6 +31,7 @@ BASE_NAME = {
     'ubuntu-trusty': 'Ubuntu14.04',
     'ubuntu-xenial': 'Ubuntu16.04',
     'ubuntu-bionic': 'Ubuntu18.04',
+    'ubuntu-focal': 'Ubuntu20.04',
     'centos7': 'CentOS7',
     'centos8': 'CentOS8',
 }
