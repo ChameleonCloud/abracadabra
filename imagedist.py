@@ -56,12 +56,6 @@ BASE_PROPS = {
     'virtual_size',
     'visibility',
 }
-SITE_AUTH_HOSTS = {
-    'kvm': 'kvm.tacc.chameleoncloud.org',
-    'tacc': 'chi.tacc.chameleoncloud.org',
-    'uc': 'chi.uc.chameleoncloud.org',
-    'dev': 'dev.tacc.chameleoncloud.org',
-}
 VARIANT_NAME = {
     'base': '',
     'gpu': 'CUDA',
@@ -222,7 +216,7 @@ def main(argv=None):
         help='Publish latest tested image given 3 args: <source-site> <distro> <variant>')
     parser.add_argument('--image', type=str, nargs=2, metavar=('site', 'id'),
         help='Site and ID of image to push around, separated by space: e.g. "uc 12345678-1234..."')
-    parser.add_argument('-t', '--target', type=str, action='append', choices=SITE_AUTH_HOSTS,
+    parser.add_argument('-t', '--target', type=str, action='append',
         help='Specify once for each target site to push said image to')
     # parser.add_argument('new_name' type=str,
     #     help='New name of the image')
