@@ -20,8 +20,6 @@ python --version
 pip --version
 pip install --upgrade pip > pip.log
 pip --version
-pip install -r requirements.txt >> pip.log
-
-pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
+pip install -r ../requirements.txt >> pip.log
 
 python imagedist.py $@

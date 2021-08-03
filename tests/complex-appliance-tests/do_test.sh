@@ -24,7 +24,7 @@ set -o xtrace
 python --version
 pip install --upgrade pip > pip.log
 pip --version
-pip install --requirement requirements.txt >> pip.log
+pip install --requirement ../../requirements.txt >> pip.log
 
 # add -s to disable all capturing; pytest doesn't allow stdin, but fabric uses stdin
 if [ $# == 2 ]; then

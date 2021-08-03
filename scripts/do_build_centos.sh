@@ -39,9 +39,7 @@ python --version
 pip --version
 pip install --upgrade pip > pip.log
 pip --version
-pip install -r requirements.txt >> pip.log
-
-pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
+pip install -r ../requirements.txt >> pip.log
 
 IMAGEINFO_FILE_TAG=$(openssl rand -base64 12)
 IMAGEINFO_FILE=$(pwd)/imageinfo.${IMAGEINFO_FILE_TAG}.json
@@ -125,13 +123,13 @@ fi
 # trying to avoid 'No valid host was found. There are not enough hosts available.' error
 sleep 5m
 
-cd tests
+cd ../tests/image-tests
 date
 TEST_BUILD_ARGS+="--image=$(jq -r .\"id\" $IMAGEINFO_FILE)"
 pytest $TEST_BUILD_ARGS
 rm -f ${IMAGEINFO_FILE}
 
-cd ..
+cd ../../scripts
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
   python cleanup_auto_created_lease.py --lease-id $EXISTING_LEASE
 fi

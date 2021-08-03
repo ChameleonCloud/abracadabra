@@ -24,13 +24,13 @@ set -o xtrace
 python --version
 pip install --upgrade pip > pip.log
 pip --version
-pip install --requirement requirements.txt >> pip.log
+pip install --requirement ../../requirements.txt >> pip.log
 
 if [ $# == 2 ]; then
 	pytest --image=${IMAGE_NAME} --node-type=${NODE_TYPE} --tb=short -s
 elif [ $# == 3 ]; then
 	LEASE_ID=$3
 	pytest --image=${IMAGE_NAME} --node-type=${NODE_TYPE} --use-lease=${LEASE_ID} --tb=short -s
-	cd ..
+	cd ../../scripts
 	python cleanup_auto_created_lease.py --lease-id ${LEASE_ID}
 fi

@@ -21,9 +21,7 @@ python --version
 pip --version
 pip install --upgrade pip > pip.log
 pip --version
-pip install -r requirements.txt >> pip.log
-
-pip freeze | grep hammers # hammers version (master branch, so somewhat volatile)
+pip install -r ../requirements.txt >> pip.log
 
 if [ $TASK == "auto-release" ]; then
 	eval "python jenkins_appliance_update_check_and_build_trigger.py $PARAMS"

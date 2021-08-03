@@ -1,17 +1,14 @@
 Fabric3
--e git+https://github.com/ChameleonCloud/hammers#egg=hammers
+python-chi
+python-swiftclient
+python-heatclient
 cryptography
 croniter
 paramiko
-python-blazarclient>=1.1.1
-python-glanceclient
-python-neutronclient
-python-swiftclient
-python-novaclient>=7.1.0,<8.0.0 # still with floating ip management
 requests
 ulid
 
-# test/deploy
+# test
 pytest
 pytest-timeout
 spur
