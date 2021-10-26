@@ -30,8 +30,6 @@ from utils import helpers
 
 
 BASE_NAME = {
-    'ubuntu-trusty': 'Ubuntu14.04',
-    'ubuntu-xenial': 'Ubuntu16.04',
     'ubuntu-bionic': 'Ubuntu18.04',
     'ubuntu-focal': 'Ubuntu20.04',
     'centos7': 'CentOS7',
@@ -143,15 +141,22 @@ def copy_image(source_auth_session, target_auths, source_image_id):
             # image. To avoid this, we need to delete the queued image if
             # uploading step fails.
             glance_target = chi.glance(session=target_auth_session)
+            disk_format = source_image['disk_format']
             if site == 'kvm':
                 list_keys = list(extra.keys())
                 for k in list_keys:
                     if k.startswith('os_'):
                         extra.pop(k)
+                converted_img_file = os.path.join(tempdir, 'raw_image')
+                disk_format = 'raw'
+                command = 'qemu-img convert -f qcow2 -O {} {} {}'.format(
+                    disk_format, img_file, converted_img_file)
+                proc = subprocess.run(shlex.split(command), check=True)
+                img_file = converted_img_file
             new_image = glance_target.images.create(
                 name=source_image['name'],
-                visivility=source_image['visibility'],
-                disk_format=source_image['disk_format'],
+                visibility=source_image['visibility'],
+                disk_format=disk_format,
                 container_format='bare',
                 **extra)
             try:
@@ -167,7 +172,8 @@ def copy_image(source_auth_session, target_auths, source_image_id):
                 raise e
 
             new_image_full = glance_target.images.get(new_image['id'])
-            if new_image_full['checksum'] != source_image['checksum']:
+            if site != 'kvm' and new_image_full['checksum'] != source_image['checksum']:
+                # skip checksum check for kvm site
                 raise RuntimeError('checksum mismatch')
 
             new_images[site] = new_image_full
@@ -277,7 +283,6 @@ def main(argv=None):
             # "copy_image" function
             'status': 'active',
             'build-variant': variant,
-            'build-kvm': 'False',
         }
         cuda_version = None
         if variant.startswith('gpu'):
@@ -286,9 +291,6 @@ def main(argv=None):
             cuda_version = variant_cuda[1]
             query['build-variant'] = variant
             query['build-cuda-version'] = cuda_version
-
-        if 'kvm' in args.target:
-            query['build-kvm'] = 'True'
 
         matching_images = list(glance_source.images.list(filters=query))
         matching_images.sort(

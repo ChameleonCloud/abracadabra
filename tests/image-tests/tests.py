@@ -75,11 +75,6 @@ def test_provenance_data(server, shell, image):
     assert image['os'] == provenance_data['build-os']
     assert image['variant'] == provenance_data['build-variant']
 
-def test_gnocchi_cli(server, shell):
-    result = shell.run(['which', 'gnocchi'], encoding='utf-8')
-    assert result.return_code == 0
-    result = shell.run(['gnocchi', '--help'], encoding='utf-8')
-    assert result.return_code == 0
 
 @pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-xenial', 'ubuntu-bionic', 'ubuntu-focal']) # trusty cloud-init is too old
 def test_uids(server, shell):
@@ -90,9 +85,8 @@ def test_uids(server, shell):
     assert int(result.output.strip()) == 1010
 
 
-@pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-xenial', 'ubuntu-bionic', 'ubuntu-focal']) # trusty doesn't have RAPL
+@pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-bionic', 'ubuntu-focal']) # trusty doesn't have RAPL
 @pytest.mark.skip_variant('arm64')
-@pytest.mark.skip_os_harware_combination('ubuntu-xenial+compute_skylake') # kernel version is too low
 def test_etrace2(server, shell):
     # the energy files under /sys/devices/virtual/powercap/intel-rapl have root-only access
     result = shell.run(['sudo', 'etrace2', 'sleep', '1'], encoding='utf-8')

@@ -73,37 +73,20 @@ fi
 # check the keypair exists
 nova keypair-show ${SSH_KEY_NAME:-default}
 
+if [ $UBUNTU_RELEASE = 'focal' ]; then
+  BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu20.04}
+elif [ $UBUNTU_RELEASE = 'bionic' ]; then
+  BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu18.04}
+else
+  echo "Unrecognized ubuntu release $UBUNTU_RELEASE"
+  exit 1
+fi
+
 if [ $VARIANT = 'gpu' ]; then
   NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
-  CUDA_VERSION=${CUDA_VERSION:-cuda10} #overrideable for other cuda versions
-  if [ $UBUNTU_RELEASE = 'focal' ]; then
-    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu20.04}
-  elif [ $UBUNTU_RELEASE = 'bionic' ]; then
-    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu18.04}
-  elif [ $UBUNTU_RELEASE = 'xenial' ]; then
-    BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu16.04}
-  elif [ $UBUNTU_RELEASE = 'trusty' ]; then
-    # no support for trusty/gpu
-    echo "No support for trusty / gpu"
-    exit 1
-  else
-  	echo "Unrecognized ubuntu release $UBUNTU_RELEASE"
-  	exit 1
-  fi
+  CUDA_VERSION=${CUDA_VERSION:-cuda11} #overrideable for other cuda versions
 elif [ $VARIANT = 'arm64' ]; then
-  NODE_TYPE=${NODE_TYPE:-arm64}
-  # only support xenial/arm64
-  if [ $UBUNTU_RELEASE != 'xenial' ]; then
-    echo "Only support xenial for arm64"
-    exit 1
-  fi
-  # new release of arm64 required the previous releases
-  # arm64 is not binary compatible
-  BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu16.04-ARM64}
-  if [[ ${BUILDER_IMAGE} != 'CC-Ubuntu16.04-ARM64'* ]]; then
-  	echo ""
-  	exit 1
-  fi
+  NODE_TYPE=${NODE_TYPE:-compute_haswell}
 fi
 
 BUILD_ARGS="--ubuntu-release $UBUNTU_RELEASE "
@@ -127,30 +110,24 @@ if ! [ -z ${CUDA_VERSION:+x} ]; then
   BUILD_ARGS+="--cuda-version $CUDA_VERSION "
 fi
 
-if ! [ -z ${KVM:+x} ] && $KVM; then
-  BUILD_ARGS+="--kvm "
-  BUILD_ARGS+="--disk-format raw "
-fi
-
 date # to compare timestamps if there are failures
 python ccbuild.py $BUILD_ARGS $LOCAL_REPO
 
-# skip the rest for kvm
-if ! [ -z ${KVM:+x} ] && $KVM; then
-  rm -f ${IMAGEINFO_FILE}
+if [ $VARIANT = 'arm64' ]; then
+  # skip test for arm64 for now as we don't have resources at core sites
   exit 0
 fi
 
 # trying to avoid 'No valid host was found. There are not enough hosts available.' error
 sleep 5m
 
-cd ../tests
+cd ../tests/image-tests
 date
 TEST_BUILD_ARGS+="--image=$(jq -r .\"id\" $IMAGEINFO_FILE)"
 pytest $TEST_BUILD_ARGS
 rm -f ${IMAGEINFO_FILE}
 
-cd ../scripts
+cd ../../scripts
 if ! [ -z ${EXISTING_LEASE:+x} ]; then
   python cleanup_auto_created_lease.py --lease-id $EXISTING_LEASE
 fi

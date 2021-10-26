@@ -27,17 +27,13 @@ if not PY3:
 BUILD_TAG = os.environ.get('BUILD_TAG', 'imgbuild-{}'.format(ulid.ulid()))
 LATEST = 'latest'
 UBUNTU_VERSIONS = {
-    'trusty': '14.04',
-    'xenial': '16.04',
     'bionic': '18.04',
     'focal': '20.04',
 }
 
 
-def do_build(ip, repodir, commit, revision, metadata, *,
-             variant='base', cuda_version='cuda11', is_kvm=False, session):
-    if not revision.strip():
-        raise ValueError('must provide revision to use')
+def do_build(ip, repodir, commit, metadata, *,
+             variant='base', cuda_version='cuda11', session):
 
     chi.server.wait_for_tcp(ip, port=22)
     print('remote contactable!')
@@ -170,17 +166,11 @@ def do_build(ip, repodir, commit, revision, metadata, *,
         else:
             cuda = ''
 
-        kvm = ''
-        if is_kvm:
-            kvm = '--kvm'
-
-        cmd = ('python create-image.py --revision {revision} {release} '
-               '--variant {variant} {cuda} {kvm} --region {region}').format(
-            revision=revision,
+        cmd = ('python create-image.py {release} '
+               '--variant {variant} {cuda} --region {region}').format(
             release=release,
             variant=variant,
             cuda=cuda,
-            kvm=kvm,
             region=region,
         )
         # DO THE THING
@@ -292,8 +282,6 @@ def main(argv=None):
                         'info in it')
     parser.add_argument('build_repo', type=str,
                         help='Path of repo to push and build.')
-    parser.add_argument('--kvm', action='store_true',
-                        help='Present if build image for KVM site')
     parser.add_argument('--disk-format', type=str,
                         default='qcow2', help='Disk format of the image')
 
@@ -344,7 +332,6 @@ def main(argv=None):
         'build-repo': repo_location,
         'build-repo-commit': commit,
         'build-tag': BUILD_TAG,
-        'build-kvm': str(args.kvm),
     }
     if args.variant == 'gpu':
         metadata['build-cuda-version'] = args.cuda_version
@@ -377,11 +364,10 @@ def main(argv=None):
     print(' - started {}...'.format(server.name))
     ip = chi_server.associate_floating_ip(server.id)
 
-    build_results = do_build(ip, args.build_repo, commit,
-                             image_revision, metadata,
+    build_results = do_build(ip, args.build_repo, commit, metadata,
                              variant=args.variant,
                              cuda_version=args.cuda_version,
-                             is_kvm=args.kvm, session=session)
+                             session=session)
     pprint(build_results)
 
     glance_results = do_upload(
@@ -393,7 +379,8 @@ def main(argv=None):
             json.dump(glance_results, f)
 
     print('Tearing down...')
-    chi_lease.delete_lease(lease['id'])
+    chi_server.delete_server(server.id)
+    #chi_lease.delete_lease(lease['id'])
 
     print('done.')
 

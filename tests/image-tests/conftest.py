@@ -153,6 +153,8 @@ def server(request, keystone, image):
     server["floating_ip"] = ip
 
     yield server
+    
+    chi_server.delete_server(server["id"])
 
 
 @pytest.fixture(scope='session')

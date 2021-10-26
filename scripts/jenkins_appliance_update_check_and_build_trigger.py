@@ -21,25 +21,13 @@ from . import imagedist
 
 PRODUCTION_NAMES_AND_SITES = {
     'CC-CentOS7': {
-        'sites': ['uc', 'tacc'],
-        'os': 'centos7',
-        'resource_type': 'compute_haswell',
-        'build': 'base'
-    },
-    'CC-CentOS7 KVM': {
-        'sites': ['kvm'],
+        'sites': ['uc', 'tacc', 'kvm'],
         'os': 'centos7',
         'resource_type': 'compute_haswell',
         'build': 'base'
     },
     'CC-CentOS8': {
-        'sites': ['uc', 'tacc'],
-        'os': 'centos8',
-        'resource_type': 'compute_haswell',
-        'build': 'base'
-    },
-    'CC-CentOS8 KVM': {
-        'sites': ['kvm'],
+        'sites': ['uc', 'tacc', 'kvm'],
         'os': 'centos8',
         'resource_type': 'compute_haswell',
         'build': 'base'
@@ -67,13 +55,7 @@ PRODUCTION_NAMES_AND_SITES = {
         'build': 'fpga'
     },
     'CC-Ubuntu18.04': {
-        'sites': ['uc', 'tacc'],
-        'os': 'ubuntu-bionic',
-        'resource_type': 'compute_haswell',
-        'build': 'base'
-    },
-    'CC-Ubuntu18.04 KVM': {
-        'sites': ['kvm'],
+        'sites': ['uc', 'tacc', 'kvm'],
         'os': 'ubuntu-bionic',
         'resource_type': 'compute_haswell',
         'build': 'base'
@@ -85,13 +67,7 @@ PRODUCTION_NAMES_AND_SITES = {
         'build': 'gpu'
     },
     'CC-Ubuntu20.04': {
-        'sites': ['uc', 'tacc'],
-        'os': 'ubuntu-focal',
-        'resource_type': 'compute_haswell',
-        'build': 'base'
-    },
-    'CC-Ubuntu20.04 KVM': {
-        'sites': ['kvm'],
+        'sites': ['uc', 'tacc', 'kvm'],
         'os': 'ubuntu-focal',
         'resource_type': 'compute_haswell',
         'build': 'base'
@@ -101,6 +77,12 @@ PRODUCTION_NAMES_AND_SITES = {
         'os': 'ubuntu-focal',
         'resource_type': 'gpu_p100',
         'build': 'gpu'
+    },
+    'CC-Ubuntu20.04-ARM64': {
+        'sites': ['tacc'],
+        'os': 'ubuntu-focal',
+        'resource_type': 'compute_haswell',
+        'build': 'arm64'
     }
 }
 
@@ -180,8 +162,6 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
         booking_site = 'tacc'
     elif 'uc' in detail['site_detail'].keys():
         booking_site = 'uc'
-    elif 'kvm' in detail['site_detail'].keys():
-        booking_site = 'tacc'
     else:
         raise ValueError('Not able to book resource for release!')
 
@@ -244,15 +224,6 @@ def reserve_resource_for_release(jenkins_location, production_name, detail):
                              'searching_feq_in_min': 60,
                              'exec_command': command,
                              'jenkins_location': jenkins_location}
-
-    if 'kvm' in detail['site_detail'].keys():
-        command_list.insert(6, 'export KVM=true')
-        kvm_command = '\n'.join(command_list)
-        jenkinshelper.update_env_variables_from_file(service_openrc)
-        reserve_resource_args['job_config_file'] = jenkins_location + '/' + \
-            jenkinshelper.JENKINS_JOB_CONFIG_FILE.format(
-                job_name=reserve_resource_args['job_name'])
-        reserve_resource_args['exec_command'] = kvm_command
 
     jenkinshelper.reserve_resource(**reserve_resource_args)
 
