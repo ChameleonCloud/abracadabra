@@ -166,7 +166,7 @@ def do_build(ip, repodir, commit, metadata, *,
         else:
             cuda = ''
 
-        cmd = ('python create-image.py {release} '
+        cmd = ('python3 create-image.py {release} '
                '--variant {variant} {cuda} --region {region}').format(
             release=release,
             variant=variant,
