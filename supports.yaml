@@ -1,0 +1,55 @@
+supported_distros:
+  centos:
+    repo_location: "https://github.com/ChameleonCloud/CC-CentOS"
+    local_repo: CC-CentOS
+    releases:
+      7:
+        prod_name: CC-CentOS7
+        base_image_path: "https://cloud.centos.org/centos/7/images/"
+        genericcloud_file_pattern: "^CentOS-7-x86_64-GenericCloud-(\\d[0-9_-]*).qcow2.xz$"
+        variants:
+          - base
+          - gpu
+          - fpga
+      8-stream:
+        prod_name: CC-CentOS8-stream
+        base_image_path: "https://cloud.centos.org/centos/8-stream/x86_64/images/"
+        genericcloud_file_pattern: "^CentOS-Stream-GenericCloud-8-(\\d[0-9.]*)x86_64.qcow2$"
+        variants:
+          - base
+          - gpu
+      9-stream:
+        cc_name_str: CC-CentOS9-stream
+  ubuntu:
+    repo_location: "https://github.com/ChameleonCloud/CC-Ubuntu"
+    local_repo: CC-Ubuntu
+    releases:
+      bionic:
+        prod_name: CC-Ubuntu18.04
+        base_image_path: "https://cloud-images.ubuntu.com"
+        variants:
+          - base
+          - gpu
+      focal:
+        prod_name: CC-Ubuntu20.04
+        base_image_path: "https://cloud-images.ubuntu.com"
+        variants:
+          - base
+          - gpu
+          - arm64
+        
+supported_variants:
+  base:
+    prod_name_suffix:
+    builder_default_node_type: compute_cascadelake
+  gpu:
+    prod_name_suffix: CUDA
+    variant_metadata:
+      build-cuda-version: cuda11
+    builder_default_node_type: gpu_p100
+  fpga:
+    prod_name_suffix: FPGA
+    builder_default_node_type: fpga
+  arm64:
+    prod_name_suffix: ARM64
+    builder_default_node_type: compute_cascadelake

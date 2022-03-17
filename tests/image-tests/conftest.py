@@ -39,8 +39,12 @@ def pytest_addoption(parser):
                      help='Node type to launch on. If not provided, inferred from image '
                      'metadata.'
                      )
-    parser.addoption('--os',
-                     help='Operating system to test. If not provided, inferred from image '
+    parser.addoption('--distro',
+                     help='Linux distro to test. If not provided, inferred from image '
+                     'metadata.',
+                     )
+    parser.addoption('--release',
+                     help='Release to test. If not provided, inferred from image '
                      'metadata.',
                      )
     parser.addoption('--rc', help='RC file with OpenStack credentials')
@@ -92,18 +96,21 @@ def image(request, keystone):
 
     image = image[0]
     image_id = image['id']
-    image_os = image.get('build-os', request.config.getoption("--os"))
+    image_distro = image.get('build-distro', request.config.getoption("--distro"))
+    image_release = image.get('build-release', request.config.getoption("--release"))
     image_variant = image.get(
-        'build-variant', request.config.getoption("--variant"))
+        'build-variant', request.config.getoption("--variant")
+    )
 
-    if image_os is None or image_variant is None:
-        pytest.exit('Image does not contain os/variant in metadata. Cannot '
+    if image_distro is None or image_release is None or image_variant is None:
+        pytest.exit('Image does not contain distro/release/variant in metadata. Cannot '
                     'automatically infer test parameter; they must be '
                     'manually specified.')
 
     return {
         'id': image_id,
-        'os': image_os,
+        'distro': image_distro,
+        'release': image_release,
         'variant': image_variant,
     }
 
@@ -165,84 +172,27 @@ def shell(request, server):
         username='cc',
         missing_host_key=spur.ssh.MissingHostKey.accept,
         private_key_file=ssh_key_file,
+        load_system_host_keys=False,
     )
     with shell:
         yield shell
 
 
-def wait(host, username='cc', **shell_kwargs):
-    shell_kwargs.setdefault('missing_host_key', spur.ssh.MissingHostKey.accept)
-    print(f'wait({host!r}, username={username!r}, **{shell_kwargs!r})')
-
-    error_counts = collections.defaultdict(int)
-    for attempt in range(100):
-        try:
-            shell = spur.SshShell(
-                hostname=host,
-                username=username,
-                **shell_kwargs,
-            )
-            with shell:
-                # time.sleep(0.25)
-                result = shell.run(['echo', 'hello'])
-        except spur.ssh.ConnectionError as e:
-            # example errors:
-            # 'Error creating SSH connection\nOriginal error: Authentication failed.'
-            # 'Error creating SSH connection\nOriginal error: [Errno 60] Operation timed out'
-            # 'Error creating SSH connection\nOriginal error: [Errno None] Unable to connect to port 22 on [ip addr]'
-            error_counts['spur.ssh.ConnectionError'] += 1
-            pass
-
-        # except paramiko.AuthenticationException as e:
-            # while the ssh service starting, it can accept connections but auth isn't fully set.
-            # error_counts['paramiko.AuthenticationException'] += 1
-            # pass
-        # except paramiko.ssh_exception.NoValidConnectionsError as e:
-            # server might be down while starting
-            # error_counts['paramiko.ssh_exception.NoValidConnectionsError'] += 1
-            # pass
-        except paramiko.SSHException as e:
-            error_counts['paramiko.SSHException'] += 1
-            # this also subsumes the other paramiko errors (above)
-
-            # paramiko.ssh_exception.SSHException: Error reading SSH protocol banner
-            # local interruptions?
-
-            # error_counts['paramiko.SSHException'] += 1
-            pass
-
-        except socket.timeout as e:
-            # if the floating IP is still kinda floating and not getting
-            # routed.
-            error_counts['socket.timeout'] += 1
-            pass
-
-        except OSError as e:
-            # filter so only capturing errno.ENETUNREACH
-            if e.errno != errno.ENETUNREACH:
-                raise
-            error_counts['ENETUNREACH'] += 1
-        else:
-            print('contacted!')
-            break
-
-        print('.', end='')
-        time.sleep(7.5)
-    else:
-        raise RuntimeError('failed to connect to {}@{}\n{}'.format(
-            username, host, error_counts))
-
+@pytest.fixture(autouse=True)
+def skip_by_distro(request, image):
+    if request.node.get_closest_marker('require_distro'):
+        req_distro = request.node.get_closest_marker('require_distro').args[0]
+        if not (image['distro'] == req_distro or image['distro'] in req_distro):
+            pytest.skip('test only for distro "{}", image has "{}"'
+                        .format(req_distro, image['distro']))
 
 @pytest.fixture(autouse=True)
-def skip_by_os(request, image):
-    if request.node.get_closest_marker('require_os'):
-        req_os = request.node.get_closest_marker('require_os').args[0]
-        # print(req_os)
-        # print(image)
-        # print(not (image['os'] == req_os or image['os'] in req_os))
-        if not (image['os'] == req_os or image['os'] in req_os):
-            pytest.skip('test only for OS "{}", image has "{}"'
-                        .format(req_os, image['os']))
+def skip_by_release(request, image):
+    if request.node.get_closest_marker('require_release'):
+        req_release = request.node.get_closest_marker('require_release').args[0]
+        if not (image['release'] == req_release or image['release'] in req_release):
+            pytest.skip('test only for release "{}", image has "{}"'
+                        .format(req_release, image['release']))
 
 
 @pytest.fixture(autouse=True)
@@ -270,16 +220,3 @@ def skip_by_region(request):
         if os.environ['OS_REGION_NAME'] != req_region:
             pytest.skip('test only for region "{}", but current region is "{}"'.format(
                 req_region, os.environ['OS_REGION_NAME']))
-
-
-@pytest.fixture(autouse=True)
-def skip_by_appliance_harware_combination(request, image):
-    node_type = request.config.getoption('--node-type')
-    image_os = image['os']
-    combo = image_os + '+' + node_type
-    if request.node.get_closest_marker('skip_os_harware_combination'):
-        skip = request.node.get_closest_marker(
-            'skip_os_harware_combination').args[0]
-        if combo == skip or combo in skip:
-            pytest.skip(
-                'test skipped for {} + {} combination'.format(image_os, node_type))

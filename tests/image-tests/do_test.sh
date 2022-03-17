@@ -31,6 +31,4 @@ if [ $# == 2 ]; then
 elif [ $# == 3 ]; then
 	LEASE_ID=$3
 	pytest --image=${IMAGE_NAME} --node-type=${NODE_TYPE} --use-lease=${LEASE_ID} --tb=short -s
-	cd ../../scripts
-	python cleanup_auto_created_lease.py --lease-id ${LEASE_ID}
 fi

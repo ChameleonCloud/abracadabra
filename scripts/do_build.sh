@@ -4,22 +4,10 @@ set -o nounset
 
 #############
 # required arguments
-UBUNTU_RELEASE=$1
-VARIANT=$2
+DISTRO=$1
+RELEASE=$2
+VARIANT=$3
 
-# optional exported variables
-# * EXISTING_LEASE - uses the lease ID (doesn't create it's own lease)
-# * NODE_TYPE
-# * BUILDER_IMAGE - image to build on (GPU drivers want the same kernel version)
-
-# examples
-# $ ./do_build_ubuntu.sh trusty base
-# $ ./do_build_ubuntu.sh xenial gpu
-# $ NODE_TYPE=gpu_k80 ./do_build_ubuntu.sh xenial gpu # p100s are taken
-#############
-
-# my dev machine doesn't accept python3.6, but IUS only installed python3.6
-# could symlink it on Jenkins, but this is maybe less disruptive.
 if command -v python3 >/dev/null 2>&1
 then
   PY3=python3
@@ -42,15 +30,18 @@ pip install --upgrade pip > pip.log
 pip --version
 pip install -r ../requirements.txt >> pip.log
 
-IMAGEINFO_FILE_TAG=$(openssl rand -base64 12)
-IMAGEINFO_FILE=$(pwd)/imageinfo.${IMAGEINFO_FILE_TAG}.json
-LOCAL_REPO=CC-Ubuntu
-REMOTE_REPO=https://github.com/ChameleonCloud/CC-Ubuntu.git
 REMOTE_BRANCH=master
 
 if ! [ -z ${BUILDER_BRANCH:+x} ]; then
         REMOTE_BRANCH=$BUILDER_BRANCH
 fi
+
+# read yaml
+SUPPORTED_DISTROS=$(python -c "import yaml,json;s=yaml.safe_load(open('../supports.yaml','r'));print(json.dumps(s['supported_distros']))")
+DISTRO_SPEC=$(echo $SUPPORTED_DISTROS | jq -r .$DISTRO)
+LOCAL_REPO=$(echo $DISTRO_SPEC | jq -r .local_repo)
+REMOTE_REPO=$(echo $DISTRO_SPEC | jq -r .repo_location)
+REMOTE_REPO=$REMOTE_REPO.git
 
 # clean up from other builds
 rm -f build.log
@@ -73,25 +64,21 @@ fi
 # check the keypair exists
 nova keypair-show ${SSH_KEY_NAME:-default}
 
-if [ $UBUNTU_RELEASE = 'focal' ]; then
-  BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu20.04}
-elif [ $UBUNTU_RELEASE = 'bionic' ]; then
-  BUILDER_IMAGE=${BUILDER_IMAGE:-CC-Ubuntu18.04}
-else
-  echo "Unrecognized ubuntu release $UBUNTU_RELEASE"
-  exit 1
-fi
 
-if [ $VARIANT = 'gpu' ]; then
-  NODE_TYPE=${NODE_TYPE:-gpu_p100} # overrideable in case the P100s are all taken
-  CUDA_VERSION=${CUDA_VERSION:-cuda11} #overrideable for other cuda versions
-elif [ $VARIANT = 'arm64' ]; then
-  NODE_TYPE=${NODE_TYPE:-compute_haswell}
-fi
+RELEASES=$(echo $DISTRO_SPEC | jq -r .releases)
+RELEASE_SPEC=$(echo $RELEASES | jq -r .[\"$RELEASE\"])
+DEFAULT_BUILDER_IMAGE=$(echo $RELEASE_SPEC | jq -r .prod_name)
+BUILDER_IMAGE=${BUILDER_IMAGE:-$DEFAULT_BUILDER_IMAGE}
 
-BUILD_ARGS="--ubuntu-release $UBUNTU_RELEASE "
+SUPPORTED_VARIANTS=$(python -c "import yaml,json;s=yaml.safe_load(open('../supports.yaml','r'));print(json.dumps(s['supported_variants']))")
+VARIANT_SPEC=$(echo $SUPPORTED_VARIANTS | jq -r .$VARIANT)
+DEFAULT_NODE_TYPE=$(echo $VARIANT_SPEC | jq -r .builder_default_node_type)
+NODE_TYPE=${NODE_TYPE:-$DEFAULT_NODE_TYPE}
+
+
+BUILD_ARGS="--distro $DISTRO "
+BUILD_ARGS+="--release $RELEASE "
 BUILD_ARGS+="--variant $VARIANT "
-BUILD_ARGS+="--glance-info $IMAGEINFO_FILE "
 
 TEST_BUILD_ARGS="--tb=short "
 
@@ -106,12 +93,13 @@ fi
 if ! [ -z ${BUILDER_IMAGE:+x} ]; then
   BUILD_ARGS+="--builder-image $BUILDER_IMAGE "
 fi
-if ! [ -z ${CUDA_VERSION:+x} ]; then
-  BUILD_ARGS+="--cuda-version $CUDA_VERSION "
-fi
 
 date # to compare timestamps if there are failures
-python ccbuild.py $BUILD_ARGS $LOCAL_REPO
+new_image_id=$(python ccbuild.py $BUILD_ARGS $LOCAL_REPO | tail -1)
+
+if ! [[ $new_image_id =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]]; then
+    exit 0
+fi
 
 if [ $VARIANT = 'arm64' ]; then
   # skip test for arm64 for now as we don't have resources at core sites
@@ -123,11 +111,5 @@ sleep 5m
 
 cd ../tests/image-tests
 date
-TEST_BUILD_ARGS+="--image=$(jq -r .\"id\" $IMAGEINFO_FILE)"
+TEST_BUILD_ARGS+="--image=$new_image_id"
 pytest $TEST_BUILD_ARGS
-rm -f ${IMAGEINFO_FILE}
-
-cd ../../scripts
-if ! [ -z ${EXISTING_LEASE:+x} ]; then
-  python cleanup_auto_created_lease.py --lease-id $EXISTING_LEASE
-fi

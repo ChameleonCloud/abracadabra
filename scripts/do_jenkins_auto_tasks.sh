@@ -1,9 +1,6 @@
 #!/bin/bash
 set -o errexit
 
-TASK=$1
-PARAMS=$2
-
 if command -v python3 >/dev/null 2>&1
 then
   PY3=python3
@@ -23,11 +20,4 @@ pip install --upgrade pip > pip.log
 pip --version
 pip install -r ../requirements.txt >> pip.log
 
-if [ $TASK == "auto-release" ]; then
-	eval "python jenkins_appliance_update_check_and_build_trigger.py $PARAMS"
-elif [ $TASK == "auto-test" ]; then
-	eval "python jenkins_periodic_tests_setup.py $PARAMS"
-else
-	echo "Unknown task $TASK"
-	exit 1
-fi
+python check_update_and_build.py $@

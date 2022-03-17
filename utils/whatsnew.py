@@ -1,16 +1,8 @@
+from html.parser import HTMLParser
 import operator
 import re
-import sys
-
 import requests
-
-import configparser
-from html.parser import HTMLParser
-import io
-
-
-PATHS = {7: 'https://cloud.centos.org/centos/7/images/',
-         8: 'https://cloud.centos.org/centos/8/x86_64/images/'}
+import yaml
 
 
 class TableParser(HTMLParser):
@@ -31,68 +23,58 @@ class TableParser(HTMLParser):
         self.in_td = False
 
 
-def newest_centos(release):
-    p = TableParser()
-    p.feed(requests.get(PATHS[release]).text)
+class Newest:
+    def _get_releases(self, distro):
+        with open("../supports.yaml", 'r') as f:
+            supports = yaml.safe_load(f)
 
-    if release == 7:
-        genericcloud_file_pattern = r'^CentOS-7-x86_64-GenericCloud-(\d[0-9_-]*).qcow2.xz$'
-    if release == 8:
-        genericcloud_file_pattern = r'^CentOS-8-GenericCloud-(\d[0-9.]*)-(.*).qcow2$'
-    last_modified_pattern = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})$'
-    image_date_dict = {}
-    current_file = None
+        releases = supports["supported_distros"][distro]["releases"]
 
-    for content in p.content_list:
-        if re.match(genericcloud_file_pattern, content):
-            image_date_dict[content] = None
-            current_file = content
-        elif re.match(last_modified_pattern, content) and current_file:
-            image_date_dict[current_file] = content
-        else:
-            current_file = None
+        return releases
 
-    latest_file_name = max(image_date_dict.items(),
-                           key=operator.itemgetter(1))[0]
+    def centos(self, release):
+        support_centos = self._get_releases("centos")
+        release_spec = support_centos[release]
 
-    m = re.search(genericcloud_file_pattern, latest_file_name)
-    if m:
-        return {'revision': m.group(1)}
+        path = release_spec["base_image_path"]
+        genericcloud_file_pattern = release_spec["genericcloud_file_pattern"]
 
-    return None
+        p = TableParser()
+        p.feed(requests.get(path).text)
 
+        last_modified_pattern = r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})$'
+        image_date_dict = {}
+        current_file = None
 
-UBUNTU_SERVER = 'https://cloud-images.ubuntu.com'
+        for content in p.content_list:
+            if re.match(genericcloud_file_pattern, content):
+                image_date_dict[content] = None
+                current_file = content
+            elif re.match(last_modified_pattern, content) and current_file:
+                image_date_dict[current_file] = content
+            else:
+                current_file = None
 
+        latest_file_name = max(image_date_dict.items(),
+                               key=operator.itemgetter(1))[0]
 
-def newest_ubuntu(release):
-    '''
-    Given the release codeword, returns the latest version of the Ubuntu cloud image.
+        m = re.search(genericcloud_file_pattern, latest_file_name)
+        if m:
+            return {'revision': m.group(1)}
 
-    14.04 - trusty
-    16.04 - xenial
-    17.04 - zesty
-    17.10 - artful
-    18.04 - bionic
-    '''
-    revision = 'unknown'
-    response = requests.get(
-        '{}/{}/current/unpacked/build-info.txt'.format(UBUNTU_SERVER, release))
-    response.raise_for_status()
-    for line in response.text.splitlines():
-        if line.startswith('serial='):
-            revision = line.split('=', 1)[1].strip()
+        return None
 
-    return {'revision': revision}
+    def ubuntu(self, release):
+        support_ubuntu = self._get_releases("ubuntu")
+        release_spec = support_ubuntu[release]
 
+        path = release_spec["base_image_path"]
+        revision = 'unknown'
+        response = requests.get(
+            '{}/{}/current/unpacked/build-info.txt'.format(path, release))
+        response.raise_for_status()
+        for line in response.text.splitlines():
+            if line.startswith('serial='):
+                revision = line.split('=', 1)[1].strip()
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv[1:]
-
-    print(newest_centos(8))
-    print(newest_ubuntu('xenial'))
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+        return {'revision': revision}

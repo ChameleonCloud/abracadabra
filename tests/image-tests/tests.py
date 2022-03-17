@@ -30,9 +30,7 @@ def test_cc_snapshot(server, shell):
     result = shell.run(['sudo', 'chmod', '+x', '/usr/bin/cc-snapshot'])
     assert result.return_code == 0
 
-    process = shell.spawn(["sudo", "cc-snapshot", "-f", "-y", image_name], stdout=sys.stdout)
-    result = process.wait_for_result()
-
+    result = shell.run(["sudo", "cc-snapshot", "-f", "-y", image_name])
     assert result.return_code == 0
     # remove image
     result = shell.run(['openstack', 'image', 'delete', image_name, '--os-auth-url', os.environ['OS_AUTH_URL'],'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-project-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '--os-identity-api-version', '3'])
@@ -52,14 +50,9 @@ def test_cc_cloudfuse(server, shell, image):
     shell.run(['mkdir', mounting_dir_name])
     shell.run(['cc-cloudfuse', 'mount', mounting_dir_name])
     # Compare with swift command
-    if image['os'] == 'ubuntu-trusty':
-        swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'].replace('v3', 'v2.0'),'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '-V', '2'], encoding='utf-8', allow_error=True)
-    else:
-        swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'],'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '--auth-version', '3'], encoding='utf-8', allow_error=True)
+    swift_list = shell.run(['swift', 'list', '--os-auth-url', os.environ['OS_AUTH_URL'],'--os-username', os.environ['OS_USERNAME'], '--os-password', os.environ['OS_PASSWORD'], '--os-tenant-id', os.environ['OS_PROJECT_ID'], '--os-region-name', os.environ['OS_REGION_NAME'], '--auth-version', '3'], encoding='utf-8', allow_error=True)
     cloudfuse_list = shell.run(['ls', mounting_dir_name], encoding='utf-8')
-    # Ubuntu trusty has issue on running swift command
-    if image['os'] != 'ubuntu-trusty':
-        assert sorted(swift_list.output.split('\n')) == sorted(cloudfuse_list.output.split('\n'))
+    assert sorted(swift_list.output.split('\n')) == sorted(cloudfuse_list.output.split('\n'))
     # Unmount and cleanup
     shell.run(['cc-cloudfuse', 'unmount', mounting_dir_name])
     shell.run(['rmdir', mounting_dir_name])
@@ -72,11 +65,11 @@ def test_provenance_data(server, shell, image):
     if provenance_data:
         pytest.skip('provenance data missing (image created manually?)')
 
-    assert image['os'] == provenance_data['build-os']
+    assert image['distro'] == provenance_data['build-distro']
+    assert image['release'] == provenance_data['build-release']
     assert image['variant'] == provenance_data['build-variant']
 
 
-@pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-xenial', 'ubuntu-bionic', 'ubuntu-focal']) # trusty cloud-init is too old
 def test_uids(server, shell):
     result = shell.run(['id', '-u', 'cc'], encoding='utf-8')
     assert int(result.output.strip()) == 1000
@@ -85,7 +78,6 @@ def test_uids(server, shell):
     assert int(result.output.strip()) == 1010
 
 
-@pytest.mark.require_os(['centos7', 'centos8', 'ubuntu-bionic', 'ubuntu-focal']) # trusty doesn't have RAPL
 @pytest.mark.skip_variant('arm64')
 def test_etrace2(server, shell):
     # the energy files under /sys/devices/virtual/powercap/intel-rapl have root-only access

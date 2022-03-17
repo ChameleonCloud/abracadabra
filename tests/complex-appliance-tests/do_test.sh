@@ -32,6 +32,4 @@ if [ $# == 2 ]; then
 elif [ $# == 3 ]; then
 	LEASE_ID=$3
 	pytest -s "${COMPLEX_APPLIANCE_NAME}.py" --use-lease=${LEASE_ID} --key-name=${KEY_NAME}
-	cd ..
-	python cleanup_auto_created_lease.py --lease-id ${LEASE_ID}
 fi

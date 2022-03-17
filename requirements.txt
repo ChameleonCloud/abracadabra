@@ -1,7 +1,8 @@
-Fabric3
+fabric
 python-chi
 python-swiftclient
 python-heatclient
+python-jenkins
 cryptography
 croniter
 paramiko

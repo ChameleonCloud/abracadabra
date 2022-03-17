@@ -1,18 +1,17 @@
-import os
-
+from fabric import connection as fconn
 from keystoneauth1 import loading, session
-
-from fabric import api as fapi
+import os
 import shlex
+import smtplib
 import subprocess
 import textwrap
+from utils import whatsnew
 
-fapi.env.abort_on_prompts = True
-fapi.env.disable_known_hosts = True
-fapi.env.use_ssh_config = True
-fapi.env.warn_only = True
 
-fapi.env.key_filename = os.environ.get('SSH_KEY_FILE', None)
+def get_latest_revision(distro, release):
+    newest = whatsnew.Newest()
+    class_method = getattr(newest, distro)
+    return class_method(release)["revision"]
 
 
 def get_auth_session_from_rc(rc):
@@ -51,8 +50,14 @@ def run(command, **kwargs):
 
 
 def remote_run(ip, *args, **kwargs):
-    with fapi.settings(user='cc', host_string=ip):
-        return fapi.run(*args, **kwargs)
+    with fconn.Connection(
+        ip,
+        user="cc",
+        connect_kwargs={
+            "key_filename": os.environ.get('SSH_KEY_FILE', None),
+        }
+    ) as c:
+        return c.run(warn=True, *args, **kwargs)
 
 
 def get_local_rev(path):
@@ -60,32 +65,35 @@ def get_local_rev(path):
     return head
 
 
-def image_upload_curl(auth_token, glance_endpoint, id, filepath):
-    """Generates an cURL command to upload an image file at `filepath` to be
-    associated with the Glance image. Includes authentication header, so
-    is stateless and can be run most anywhere."""
-    return textwrap.dedent('''\
-    curl -i -X PUT -H "X-Auth-Token: {token}" \
-        -H "Content-Type: application/octet-stream" \
-        -H "Connection: keep-alive" \
-        -T "{filepath}" \
-        {url}'''.format(
-        token=auth_token,
-        filepath=filepath,
-        url=glance_endpoint + '/v2/images/{}/file'.format(id),
-    ))
+def send_notification_mail(relay, from_email, to_emails, image):
+    # TODO: add detailed instructions
+    help_url = "https://chameleoncloud.org/user/help/"
+    message = f"""
+    MIME-Version: 1.0
+    Content-type: text/html
+    Subject: New Chameleon image has been released
 
+    <p>We have released a new version of {image["name"]}!</p>
 
-def image_download_curl(auth_token, glance_endpoint, id, filepath):
-    """Generates a cURL command to download an image file to `filepath`.
-    If `filepath` is not provided, dumps to ``~/<image name>.img``. The
-    request is authenticated, so can be run most anywhere."""
-    return textwrap.dedent('''\
-    curl -D /dev/stdout -X GET -H "X-Auth-Token: {token}" \
-        -H "Connection: keep-alive" \
-        {url} \
-        -o {filepath}'''.format(
-        token=auth_token,
-        url=glance_endpoint + '/v2/images/{}/file'.format(id),
-        filepath=filepath,
-    ))
+    <p>Distro: {image["build-distro"]}</p>
+    <p>Release: {image["build-release"]}</p>
+    <p>Variant: {image["build-variant"]}</p>
+    <p>Base Image Revision: {image["build-os-base-image-revision"]}</p>
+    <p>Build Timestamp" {image["build-timestamp"]}</p>
+
+    <p>
+    Please use the Chemaleon image-pulling tool to download the latest version!
+    </p>
+
+    <p><i>This is an automatic email, please <b>DO NOT</b> reply!
+    If you have any question or issue with the image, please submit
+    a ticket on our <a href="{help_url}">help desk</a>.
+    </i></p>
+
+    <p>Thanks,</p>
+    <p>Chameleon Team</p>
+    """
+
+    smtpObj = smtplib.SMTP(relay)
+    smtpObj.sendmail(from_email, to_emails, message)
+
