@@ -245,7 +245,6 @@ def main(argv=None):
     args = parser.parse_args()
 
     rc = helpers.get_rc_from_env()
-    session = helpers.get_auth_session_from_rc(rc)
 
     if not args.key_name:
         args.key_name = os.environ.get('SSH_KEY_NAME', 'default')

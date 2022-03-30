@@ -6,9 +6,8 @@ JSON auth file should be of format:
 
     {"auths": {"<site1>": {"<OS_var>": "<value>", ...}, ...}}
 
-The source image will be copied to the centralized object store using
-cURL. And send notifications to the chameleon friend and family
-google group.
+The source image will be copied to the centralized object store.
+And send notifications.
 '''
 import argparse
 import chi
@@ -46,9 +45,6 @@ BASE_PROPS = {
     'virtual_size',
     'visibility',
 }
-CHAMELEON_CORE_SITES = ["uc", "tacc"]
-CENTRALIZED_STORE = "swift"
-CENTRALIZED_STORE_SITE = "tacc"
 
 
 def production_name(image=None, distro=None, release=None, variant=None):
@@ -67,14 +63,6 @@ def production_name(image=None, distro=None, release=None, variant=None):
         prod_name = f"{prod_name}-{suffix}"
 
     return prod_name
-
-
-def archival_name(image):
-    return "{}-{}-{}".format(
-        production_name(image=image),
-        image["build-os-base-image-revision"],
-        image["build-timestamp"]
-    )
 
 
 def extract_extra_properties(image):
@@ -108,7 +96,7 @@ def copy_image(source_session, target_session, source_image_id):
             glance_target.images.upload(
                 new_image['id'],
                 open(img_file, "rb"),
-                backend=CENTRALIZED_STORE,
+                backend=helpers.CENTRALIZED_STORE,
             )
         except Exception as e:
             # will raise exception if deleting fails; in this case, please
@@ -120,6 +108,25 @@ def copy_image(source_session, target_session, source_image_id):
         if new_image_full['checksum'] != source_image['checksum']:
             # skip checksum check for kvm site
             raise RuntimeError('checksum mismatch')
+
+        # add metadata to swift object
+        swift_conn = helpers.connect_to_swift_with_admin(
+            target_session, helpers.CENTRALIZED_STORE_REGION_NAME
+        )
+        try:
+            meta_headers = {
+                f"{helpers.SWIFT_META_HEADER_PREFIX}{k}": f"{new_image[k]}"
+                for k in new_image.keys() if k.startswith("build")
+            }
+            meta_headers[f"{helpers.SWIFT_META_HEADER_PREFIX}disk-format"] = new_image["disk_format"]
+            swift_conn.put_object(
+                container=helpers.CENTRALIZED_CONTAINER_NAME,
+                name=new_image['id'],
+                headers=meta_headers
+            )
+        except Exception as e:
+            glance_target.images.delete(new_image['id'])
+            raise e
 
     return new_image_full
 
@@ -135,7 +142,7 @@ def archive_image(auth_session, owner, image):
     if isinstance(image, str):
         image = glance.images.get(image)
 
-    new_name = archival_name(image=image)
+    new_name = helpers.archival_name(production_name(image=image), image=image)
 
     print('renaming image {} ({}) to {}'.format(
         image['name'], image['id'], new_name))
@@ -171,10 +178,10 @@ def main(argv=None):
 
     auth_sessions = {}
     for site, auth_info in auth_data['auths'].items():
-        if site in CHAMELEON_CORE_SITES:
+        if site in helpers.CHAMELEON_CORE_SITES:
             auth_sessions[site] = helpers.get_auth_session_from_rc(auth_info)
 
-    centralized_auth_session = auth_sessions[CENTRALIZED_STORE_SITE]
+    centralized_auth_session = auth_sessions[helpers.CENTRALIZED_STORE_SITE]
 
     glance_source = chi.glance(session=auth_sessions[args.from_site])
 
@@ -200,7 +207,7 @@ def main(argv=None):
                 f"No latest image found with query {query}"
             )
             return 0
-        if latest_image.get("store", None) == CENTRALIZED_STORE:
+        if latest_image.get("store", None) == helpers.CENTRALIZED_STORE:
             print(
                 f"The latest {distro}-{release} {variant} image has been released.",
                 file=sys.stderr
@@ -226,7 +233,7 @@ def main(argv=None):
         'name': image_production_name,
         'owner': auth_data['auths'][args.from_site]['OS_PROJECT_ID'],
         'visibility': 'public',
-        'store': CENTRALIZED_STORE}
+        'store': helpers.CENTRALIZED_STORE}
     ))
     if len(named_images) == 1:
         archive_image(centralized_auth_session, auth_data['auths'][args.from_site]
@@ -237,7 +244,7 @@ def main(argv=None):
             .format(image_production_name))
     elif len(named_images) < 1:
         # do nothing
-        print(f"no public production images {image_production_name} found on site {CENTRALIZED_STORE_SITE}")
+        print(f"no public production images {image_production_name} found on site {helpers.CENTRALIZED_STORE_SITE}")
 
     # rename new image at centralized object store
     glance = chi.glance(session=centralized_auth_session)

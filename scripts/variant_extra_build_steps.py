@@ -1,4 +1,3 @@
-from swiftclient.client import Connection as swift_conn
 import sys
 
 sys.path.append("..")
@@ -29,13 +28,7 @@ class ExtraSteps:
         helpers.remote_run(
             ip=ip, command='sudo mkdir -p {}'.format(tmp_fpga_dir))
 
-        swift_connection = swift_conn(session=session,
-                                      os_options={'region_name': region},
-                                      preauthurl=session.get_endpoint(
-                                          service_type='object-store',
-                                          region_name=region,
-                                          interface='public')
-                                      )
+        swift_connection = helpers.connect_to_swift_with_admin(session, region)
         for obj in objects:
             print('downloading {}'.format(obj))
             resp_headers, obj_contents = swift_connection.get_object('FPGA', obj)

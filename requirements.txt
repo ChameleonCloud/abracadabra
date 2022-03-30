@@ -1,4 +1,5 @@
 fabric
+Jinja2
 python-chi
 python-swiftclient
 python-heatclient
