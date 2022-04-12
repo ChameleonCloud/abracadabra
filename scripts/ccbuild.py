@@ -10,6 +10,7 @@ import json
 import os
 from pprint import pprint
 import sys
+import textwrap
 import ulid
 from variant_extra_build_steps import ExtraSteps
 import yaml
@@ -90,24 +91,22 @@ def do_build(ip, rc, repodir, commit, metadata, variant):
     helpers.remote_run(ip=ip, command='sudo bash ~/build/install-reqs.sh',
                        pty=True, out_stream=out)
 
-    env = {
-        # shell_env doesn't do escaping; quotes get mangled. base64 skips that.
-        'DIB_CC_PROVENANCE': base64.b64encode(
-            json.dumps(metadata).encode('ascii')
-        ).decode('ascii'),
-    }
     # there's a lot of output and it can do strange things if we don't
     # use a buffer or file or whatever
-    cmd = ('cd /home/cc/build/ && '
+    cmd = ('export DIB_CC_PROVENANCE={provenance}; '
+           'cd /home/cc/build/ && '
            'python3 create-image.py --release {release} '
            '--variant {variant} --region {region}').format(
+        provenance=base64.b64encode(
+            json.dumps(metadata).encode('ascii')
+        ).decode('ascii'),
         release=metadata["build-release"],
         variant=variant,
         region=region,
     )
     # DO THE THING
     helpers.remote_run(ip=ip, command=cmd, pty=True,
-                       out_stream=out, env=env)
+                       out_stream=out)
 
     with open('build.log', 'w') as f:
         print(f.write(out.getvalue()))
@@ -162,9 +161,20 @@ def do_upload(ip, rc, metadata, disk_format, **build_results):
                                      ),
         disk_format=disk_format,
         container_format='bare',
-        file=build_results['image_loc'],
         **metadata
     )
+
+    upload_command = textwrap.dedent('''\
+        curl -i -X PUT -H "X-Auth-Token: {token}" \
+            -H "Content-Type: application/octet-stream" \
+            -H "Connection: keep-alive" \
+            -T "{filepath}" \
+            {url}'''.format(
+            token=session.get_token(),
+            filepath=build_results['image_loc'],
+            url=session.get_endpoint(service_type="image") + f"/v2/images/{image['id']}/file",
+        ))
+    out = helpers.remote_run(ip=ip, command=upload_command)
 
     image = glance.images.get(image["id"])
 

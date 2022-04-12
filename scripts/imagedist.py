@@ -121,8 +121,9 @@ def copy_image(source_session, target_session, source_image_id):
             meta_headers[f"{helpers.SWIFT_META_HEADER_PREFIX}disk-format"] = new_image["disk_format"]
             swift_conn.put_object(
                 container=helpers.CENTRALIZED_CONTAINER_NAME,
-                name=new_image['id'],
-                headers=meta_headers
+                obj=new_image['id'],
+                headers=meta_headers,
+                contents=None,
             )
         except Exception as e:
             glance_target.images.delete(new_image['id'])
@@ -207,7 +208,7 @@ def main(argv=None):
                 f"No latest image found with query {query}"
             )
             return 0
-        if latest_image.get("store", None) == helpers.CENTRALIZED_STORE:
+        if latest_image.get("stores", None) == helpers.CENTRALIZED_STORE:
             print(
                 f"The latest {distro}-{release} {variant} image has been released.",
                 file=sys.stderr
@@ -233,7 +234,7 @@ def main(argv=None):
         'name': image_production_name,
         'owner': auth_data['auths'][args.from_site]['OS_PROJECT_ID'],
         'visibility': 'public',
-        'store': helpers.CENTRALIZED_STORE}
+        'stores': helpers.CENTRALIZED_STORE}
     ))
     if len(named_images) == 1:
         archive_image(centralized_auth_session, auth_data['auths'][args.from_site]
