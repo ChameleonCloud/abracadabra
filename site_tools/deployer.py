@@ -4,9 +4,12 @@ Download image from the centralized object store and deploy to the site.
 '''
 import argparse
 import chi
+import io
 import json
 import logging
 import operator
+import re
+import requests
 import shlex
 import subprocess
 import sys
@@ -59,9 +62,9 @@ def find_latest_published_image(glanceclient, headers, image_production_name):
 def copy_image(session, headers, source_image_content):
     glance = chi.glance(session=session)
     extra = {
-        k.replace(f"{helpers.SWIFT_META_HEADER_PREFIX}", ""): v
+        k.lower().replace(f"{helpers.SWIFT_META_HEADER_PREFIX}", ""): v
         for k, v in headers.items()
-        if k.startswith(f"{helpers.SWIFT_META_HEADER_PREFIX}build")
+        if k.lower().startswith(f"{helpers.SWIFT_META_HEADER_PREFIX}build")
     }
 
     tmp_image_name = f"img-cc-prod-{ulid.ulid()}"
@@ -76,7 +79,7 @@ def copy_image(session, headers, source_image_content):
     try:
         glance.images.upload(
             new_image['id'],
-            source_image_content.decode("utf-8"),
+            io.BytesIO(source_image_content),
         )
     except Exception as e:
         # will raise exception if deleting fails; in this case, please
@@ -98,28 +101,37 @@ def archive_image(auth_session, image, image_production_name):
     glance.images.update(image['id'], name=new_name)
 
 
-def get_image_obj_by_id(session, image_id):
-    swift_conn = helpers.connect_to_swift_with_admin(
-            session, helpers.CENTRALIZED_STORE_REGION_NAME
-    )
+def download_image(image_id):
+    r = requests.get(f"{helpers.CENTRALIZED_CONTAINER_URL}/{image_id}")
+    return r.headers, r.content
+
+
+def read_image_metadata(image_id):
+    r = requests.head(f"{helpers.CENTRALIZED_CONTAINER_URL}/{image_id}")
+    return r.headers
+
+
+def list_images():
+    result = []
+    r = requests.get(f"{helpers.CENTRALIZED_CONTAINER_URL}/")
+    for item in r.content.decode().split("\n"):
+        if re.match("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", item):
+            result.append(item)
+    return result
+
+
+def get_image_obj_by_id(image_id):
     try:
-        return swift_conn.get_object(
-            helpers.CENTRALIZED_CONTAINER_NAME, image_id
-        )
+        return download_image(image_id)
     except Exception:
-        return None
+        logging.exception(f"Failed to download image {image_id}.")
+        return None, None
 
 
-def get_latest_image_objs(session, identifiers):
-    swift_conn = helpers.connect_to_swift_with_admin(
-            session, helpers.CENTRALIZED_STORE_REGION_NAME
-    )
-    resp_header, objects = swift_conn.get_container(
-        helpers.CENTRALIZED_CONTAINER_NAME
-    )
+def get_latest_image_objs(identifiers):
     image_objs = {}
-    for obj in objects:
-        headers = swift_conn.head_object(helpers.CENTRALIZED_CONTAINER_NAME, obj["name"])
+    for image in list_images():
+        headers = read_image_metadata(image)
         image_variant = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-variant", None)
         image_release = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-release", None)
         image_distro = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-distro", None)
@@ -130,14 +142,12 @@ def get_latest_image_objs(session, identifiers):
                 image_objs[identifier] = {"timestamp": "0"}
             if image_objs[identifier]["timestamp"] < timestamp:
                 image_objs[identifier] = {
-                    "timestamp": timestamp, "obj": obj["name"]
+                    "timestamp": timestamp, "obj": image
                 }
 
     result = []
     for identifier in image_objs.keys():
-        resp_headers, content = swift_conn.get_object(
-            helpers.CENTRALIZED_CONTAINER_NAME, image_objs[identifier]["obj"]
-        )
+        resp_headers, content = download_image(image_objs[identifier]["obj"])
         result.append((resp_headers, content))
     return result
 
@@ -175,7 +185,7 @@ def main(argv=None):
     elif args.latest:
         distro, release, variant = args.latest
         release_images = get_latest_image_objs(
-            auth_session, [(distro, release, variant)]
+            [(distro, release, variant)]
         )
     else:
         # release all images
@@ -189,9 +199,7 @@ def main(argv=None):
                     continue
                 for variant in rv["variants"]:
                     identifiers.append((distro, release, variant))
-        release_images = get_latest_image_objs(
-            auth_session, identifiers
-        )
+        release_images = get_latest_image_objs(identifiers)
 
     glance = chi.glance(session=auth_session)
     for img in release_images:

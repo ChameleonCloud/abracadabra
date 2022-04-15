@@ -15,6 +15,7 @@ import yaml
 
 
 CENTRALIZED_CONTAINER_NAME = "chameleon-images"
+CENTRALIZED_CONTAINER_URL = f"https://chi.tacc.chameleoncloud.org:7480/swift/v1/{CENTRALIZED_CONTAINER_NAME}"
 CHAMELEON_CORE_SITES = ["uc", "tacc"]
 CENTRALIZED_STORE = "swift"
 CENTRALIZED_STORE_SITE = "tacc"
@@ -195,6 +196,7 @@ def connect_to_swift_with_admin(session, region_name):
                                   preauthurl=session.get_endpoint(
                                       service_type='object-store',
                                       region_name=region_name,
-                                      interface='public')
+                                      interface='public'
+                                      )
                                   )
     return swift_connection

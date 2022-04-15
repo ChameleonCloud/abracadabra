@@ -46,6 +46,8 @@ BASE_PROPS = {
     'visibility',
 }
 
+KEEP_SWIFT_HEADERS = ["x-object-manifest"]
+
 
 def production_name(image=None, distro=None, release=None, variant=None):
     if image:
@@ -119,6 +121,12 @@ def copy_image(source_session, target_session, source_image_id):
                 for k in new_image.keys() if k.startswith("build")
             }
             meta_headers[f"{helpers.SWIFT_META_HEADER_PREFIX}disk-format"] = new_image["disk_format"]
+            existing_headers = swift_conn.head_object(
+                helpers.CENTRALIZED_CONTAINER_NAME, new_image['id']
+            )
+            for header in KEEP_SWIFT_HEADERS:
+                meta_headers[header] = existing_headers.get(header, None)
+
             swift_conn.put_object(
                 container=helpers.CENTRALIZED_CONTAINER_NAME,
                 obj=new_image['id'],
