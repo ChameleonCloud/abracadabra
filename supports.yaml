@@ -2,6 +2,7 @@ supported_distros:
   centos:
     repo_location: "https://github.com/ChameleonCloud/CC-CentOS"
     local_repo: CC-CentOS
+    extra_params: "--region ${OS_REGION_NAME}"
     releases:
       7:
         prod_name: CC-CentOS7
@@ -19,7 +20,7 @@ supported_distros:
           - base
           - gpu
       9-stream:
-        cc_name_str: CC-CentOS9-stream
+        prod_name: CC-CentOS9-stream
   ubuntu:
     repo_location: "https://github.com/ChameleonCloud/CC-Ubuntu"
     local_repo: CC-Ubuntu
@@ -37,6 +38,24 @@ supported_distros:
           - base
           - gpu
           - arm64
+      jammy:
+        prod_name: CC-Ubuntu22.04
+        base_image_path: "https://cloud-images.ubuntu.com"
+        variants:
+          - base
+          - gpu
+  ipa_debian:
+    repo_location: "https://github.com/ChameleonCloud/ironic_agent_builder"
+    local_repo: CC-IPA
+    extra_params: "--ironic stable/xena"
+    disk_format: aki
+    releases:
+      bullseye:
+        prod_name: CC-IPA-Debian11
+        default_builder_image: CC-Ubuntu20.04
+        base_image_path: "http://ftp.debian.org/debian/dists/"
+        variants:
+          - amd64
         
 supported_variants:
   base:
@@ -52,4 +71,7 @@ supported_variants:
     builder_default_node_type: fpga
   arm64:
     prod_name_suffix: ARM64
+    builder_default_node_type: compute_cascadelake
+  amd64:
+    prod_name_suffix: AMD64
     builder_default_node_type: compute_cascadelake

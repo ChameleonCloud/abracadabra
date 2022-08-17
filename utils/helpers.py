@@ -1,3 +1,4 @@
+import chi
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from fabric import connection as fconn
@@ -9,13 +10,14 @@ import shlex
 import smtplib
 import subprocess
 from swiftclient.client import Connection as swift_conn
-import textwrap
 from utils import whatsnew
 import yaml
 
 
 CENTRALIZED_CONTAINER_NAME = "chameleon-images"
-CENTRALIZED_CONTAINER_URL = f"https://chi.tacc.chameleoncloud.org:7480/swift/v1/{CENTRALIZED_CONTAINER_NAME}"
+CENRTALIZED_CONTAINER_ACCOUNT = "AUTH_570aad8999f7499db99eae22fe9b29bb"
+CENTRALIZED_CONTAINER_URL = \
+    f"https://chi.tacc.chameleoncloud.org:7480/swift/v1/{CENRTALIZED_CONTAINER_ACCOUNT}/{CENTRALIZED_CONTAINER_NAME}"
 CHAMELEON_CORE_SITES = ["uc", "tacc"]
 CENTRALIZED_STORE = "swift"
 CENTRALIZED_STORE_SITE = "tacc"
@@ -137,6 +139,19 @@ def get_auth_session_from_yaml(yaml_file):
         project_domain_id='default'
     )
     return session.Session(auth=admin_auth)
+
+
+def set_chi_session_from_yaml(yaml_file):
+    with open(yaml_file, 'r') as f:
+        site = yaml.safe_load(f)
+    chi.set("auth_url", site["auth_url"])
+    chi.set("username", site["admin_username"])
+    chi.set("password", site["admin_password"])
+    chi.set("project_name", site["admin_project"])
+    chi.set("user_domain_id", 'default')
+    chi.set("project_domain_id", 'default')
+    chi.set("auth_type", "v3password")
+    chi.set("region_name", site["region_name"])
 
 
 def get_rc_from_env():

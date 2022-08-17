@@ -14,15 +14,13 @@ import chi
 import json
 import operator
 import os
-import shlex
-import subprocess
 import sys
 import tempfile
-from urllib.parse import urlparse
 import yaml
 
 sys.path.append("..")
 from utils import helpers
+
 
 BASE_PROPS = {
     'checksum',
@@ -44,16 +42,19 @@ BASE_PROPS = {
     'updated_at',
     'virtual_size',
     'visibility',
+    'stores',
 }
 
 KEEP_SWIFT_HEADERS = ["x-object-manifest"]
 
 
-def production_name(image=None, distro=None, release=None, variant=None):
+def production_name(image=None, distro=None, release=None, variant=None,
+                    ipa=None):
     if image:
         distro = image["build-distro"]
         release = image["build-release"]
         variant = image["build-variant"]
+        ipa = image["build-ipa"]
 
     with open("../supports.yaml", 'r') as f:
         supports = yaml.safe_load(f)
@@ -63,6 +64,8 @@ def production_name(image=None, distro=None, release=None, variant=None):
 
     if suffix:
         prod_name = f"{prod_name}-{suffix}"
+    if ipa != "na":
+        prod_name = f"{prod_name}.{ipa}"
 
     return prod_name
 
@@ -175,6 +178,9 @@ def main(argv=None):
     parser.add_argument('--latest', type=str, nargs=3,
                         metavar=('distro', 'release', 'variant'),
                         help='Publish latest tested image given 3 args:<distro> <release> <variant>')
+    parser.add_argument('--ipa', type=str, default="na",
+                        choices=['initramfs', 'kernel'],
+                        help='IPA metadata; if not IPA image, set to "na"; default "na"')
     parser.add_argument('--image', type=str, help='Image id to publish')
     parser.add_argument('--notify', type=str, nargs=2,
                         help="Send notifications to emails (comma-separated)"
@@ -205,6 +211,7 @@ def main(argv=None):
             'build-release': release,
             'status': 'active',
             'build-variant': variant,
+            'build-ipa': args.ipa,
         }
 
         matching_images = list(glance_source.images.list(filters=query))
@@ -257,10 +264,10 @@ def main(argv=None):
 
     # rename new image at centralized object store
     glance = chi.glance(session=centralized_auth_session)
-    glance.images.update(new_image['id'],
-                         name=image_production_name,
-                         visibility='public',
-                         )
+    new_image = glance.images.update(new_image['id'],
+                                     name=image_production_name,
+                                     visibility='public',
+                                     )
 
     # delete tmp image
     print('delete tmp image {} from site {}'.format(source_image['id'], args.from_site))

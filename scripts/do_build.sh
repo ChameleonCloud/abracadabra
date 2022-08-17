@@ -67,7 +67,18 @@ nova keypair-show ${SSH_KEY_NAME:-default}
 
 RELEASES=$(echo $DISTRO_SPEC | jq -r .releases)
 RELEASE_SPEC=$(echo $RELEASES | jq -r .[\"$RELEASE\"])
-DEFAULT_BUILDER_IMAGE=$(echo $RELEASE_SPEC | jq -r .prod_name)
+HAS_DEFAULT_BUILDER_IMAGE=$(echo $RELEASE_SPEC | jq 'has("default_builder_image")')
+if [ $HAS_DEFAULT_BUILDER_IMAGE = true ]; then
+  DEFAULT_BUILDER_IMAGE=$(echo $RELEASE_SPEC | jq -r .default_builder_image)
+else
+  DEFAULT_BUILDER_IMAGE=$(echo $RELEASE_SPEC | jq -r .prod_name)
+fi
+BUILDER_IMAGE=${BUILDER_IMAGE:-$DEFAULT_BUILDER_IMAGE}
+
+HAS_DISK_FORMAT=$(echo $DISTRO_SPEC | jq 'has("disk_format")')
+if [ $HAS_DISK_FORMAT = true ]; then
+  DISK_FORMAT=$(echo $DISTRO_SPEC | jq -r .disk_format)
+fi
 BUILDER_IMAGE=${BUILDER_IMAGE:-$DEFAULT_BUILDER_IMAGE}
 
 SUPPORTED_VARIANTS=$(python -c "import yaml,json;s=yaml.safe_load(open('../supports.yaml','r'));print(json.dumps(s['supported_variants']))")
@@ -93,6 +104,9 @@ fi
 if ! [ -z ${BUILDER_IMAGE:+x} ]; then
   BUILD_ARGS+="--builder-image $BUILDER_IMAGE "
 fi
+if ! [ -z ${DISK_FORMAT:+x} ]; then
+  BUILD_ARGS+="--disk-format $DISK_FORMAT "
+fi
 
 date # to compare timestamps if there are failures
 new_image_id=$(python ccbuild.py $BUILD_ARGS $LOCAL_REPO | tail -1)
@@ -101,8 +115,9 @@ if ! [[ $new_image_id =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-
     exit 0
 fi
 
-if [ $VARIANT = 'arm64' ]; then
-  # skip test for arm64 for now as we don't have resources at core sites
+if [[ $VARIANT == arm64 ]] || [ $DISTRO == ipa_* ]; then
+  # skip test for arm64 as we don't have resources at core sites
+  # skip test for ipa image as we use different machenism
   exit 0
 fi
 

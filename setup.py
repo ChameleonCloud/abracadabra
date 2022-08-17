@@ -14,6 +14,7 @@ setup(
         'console_scripts': [
             'deploy = site_tools.deployer:main',
             'clean = site_tools.cleaner:main',
+            'ipa_test = site_tools.ipa_tester:main',
         ],
     },
 

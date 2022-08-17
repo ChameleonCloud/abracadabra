@@ -5,17 +5,12 @@ Download image from the centralized object store and deploy to the site.
 import argparse
 import chi
 import io
-import json
 import logging
 import operator
 import re
 import requests
-import shlex
-import subprocess
 import sys
-import tempfile
 import ulid
-from urllib.parse import urlparse
 import yaml
 
 from utils import helpers
@@ -27,30 +22,34 @@ def get_identifiers(headers):
     distro = headers[f"{helpers.SWIFT_META_HEADER_PREFIX}build-distro"]
     release = headers[f"{helpers.SWIFT_META_HEADER_PREFIX}build-release"]
     variant = headers[f"{helpers.SWIFT_META_HEADER_PREFIX}build-variant"]
+    ipa = headers[f"{helpers.SWIFT_META_HEADER_PREFIX}build-ipa"]
 
-    return distro, release, variant
+    return distro, release, variant, ipa
 
 
 def production_name(headers, supports):
-    distro, release, variant = get_identifiers(headers)
+    distro, release, variant, ipa = get_identifiers(headers)
 
     prod_name = supports["supported_distros"][distro]["releases"][release]["prod_name"]
     suffix = supports["supported_variants"][variant]["prod_name_suffix"]
 
     if suffix:
         prod_name = f"{prod_name}-{suffix}"
+    if ipa != "na":
+        prod_name = f"{prod_name}.{ipa}"
 
     return prod_name
 
 
 def find_latest_published_image(glanceclient, headers, image_production_name):
-    distro, release, variant = get_identifiers(headers)
+    distro, release, variant, ipa = get_identifiers(headers)
     query = {
         "build-distro": distro,
         "build-release": release,
         "status": "active",
         "build-variant": variant,
         "name": image_production_name,
+        "build-ipa": ipa,
     }
 
     matching_images = list(glanceclient.images.list(filters=query))
@@ -135,8 +134,9 @@ def get_latest_image_objs(identifiers):
         image_variant = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-variant", None)
         image_release = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-release", None)
         image_distro = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-distro", None)
+        image_ipa = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-ipa", None)
         timestamp = headers.get(f"{helpers.SWIFT_META_HEADER_PREFIX}build-timestamp", None)
-        identifier = (image_distro, image_release, image_variant)
+        identifier = (image_distro, image_release, image_variant, image_ipa)
         if identifier in identifiers and timestamp:
             if identifier not in image_objs:
                 image_objs[identifier] = {"timestamp": "0"}
@@ -166,6 +166,9 @@ def main(argv=None):
     parser.add_argument('--latest', type=str, nargs=3,
                         metavar=("distro", "release", "variant"),
                         help='Publish latest tested image given 3 args:<distro> <release> <variant>')
+    parser.add_argument('--ipa', type=str, default="na",
+                        choices=['initramfs', 'kernel'],
+                        help='IPA metadata; if not IPA image, set to "na"; default "na"')
     parser.add_argument('--image', type=str, help='Image id to publish')
 
     args = parser.parse_args(argv[1:])
@@ -185,7 +188,7 @@ def main(argv=None):
     elif args.latest:
         distro, release, variant = args.latest
         release_images = get_latest_image_objs(
-            [(distro, release, variant)]
+            [(distro, release, variant, args.ipa)]
         )
     else:
         # release all images
@@ -198,7 +201,11 @@ def main(argv=None):
                 if "variants" not in rv:
                     continue
                 for variant in rv["variants"]:
-                    identifiers.append((distro, release, variant))
+                    if distro.startswith("ipa_"):
+                        identifiers.append((distro, release, variant, "initramfs"))
+                        identifiers.append((distro, release, variant, "kernel"))
+                    else:
+                        identifiers.append((distro, release, variant, "na"))
         release_images = get_latest_image_objs(identifiers)
 
     glance = chi.glance(session=auth_session)
@@ -218,9 +225,9 @@ def main(argv=None):
             latest_image.get("build-timestamp", None) == resp_headers[timestamp_header] and
             latest_image.get("build-os-base-image-revision", None) == resp_headers[revision_header]
         ):
-            d, r, v = get_identifiers(resp_headers)
+            d, r, v, p = get_identifiers(resp_headers)
             logging.info(
-                f"The latest image {d}-{r}-{v} has been released. Nothing to do."
+                f"The latest image {d}-{r}-{v}-{p} has been released. Nothing to do."
             )
             continue
 

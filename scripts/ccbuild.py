@@ -4,7 +4,6 @@ from chi import lease as chi_lease
 from chi import server as chi_server
 import chi
 import datetime
-import functools
 import io
 import json
 import os
@@ -26,13 +25,12 @@ if not PY3:
 BUILD_TAG = os.environ.get('BUILD_TAG', 'imgbuild-{}'.format(ulid.ulid()))
 
 
-def do_build(ip, rc, repodir, commit, metadata, variant):
+def do_build(ip, rc, repodir, commit, metadata, variant, extra_params):
 
     chi.server.wait_for_tcp(ip, port=22)
     print('remote contactable!')
 
     ssh_key_file = os.environ.get('SSH_KEY_FILE', None)
-    region = os.environ['OS_REGION_NAME']
 
     ssh_args = ['-o UserKnownHostsFile=/dev/null',
                 '-o StrictHostKeyChecking=no']
@@ -40,7 +38,7 @@ def do_build(ip, rc, repodir, commit, metadata, variant):
     extra_steps = getattr(ExtraSteps(), variant, None)
     if extra_steps:
         kwargs = {
-            "region": region,
+            "region": os.environ['OS_REGION_NAME'],
             "ip": ip,
             "rc": rc,
             "ssh_key_file": ssh_key_file,
@@ -96,13 +94,13 @@ def do_build(ip, rc, repodir, commit, metadata, variant):
     cmd = ('export DIB_CC_PROVENANCE={provenance}; '
            'cd /home/cc/build/ && '
            'python3 create-image.py --release {release} '
-           '--variant {variant} --region {region}').format(
+           '--variant {variant} {extra_params}').format(
         provenance=base64.b64encode(
             json.dumps(metadata).encode('ascii')
         ).decode('ascii'),
         release=metadata["build-release"],
         variant=variant,
-        region=region,
+        extra_params=extra_params,
     )
     # DO THE THING
     helpers.remote_run(ip=ip, command=cmd, pty=True,
@@ -112,7 +110,7 @@ def do_build(ip, rc, repodir, commit, metadata, variant):
         print(f.write(out.getvalue()))
 
     out.seek(0)
-    ibi = 'Image built in '.format(ip=ip)
+    ibi = 'Image built in '
     for line in out:
         if not line.startswith(ibi):
             continue
@@ -120,23 +118,44 @@ def do_build(ip, rc, repodir, commit, metadata, variant):
         break
     else:
         raise RuntimeError("didn't find output file in logs.")
-    print(output_file)
-    checksum_result = helpers.remote_run(
-        ip=ip, command=f"md5sum {output_file}"
+
+    out = io.StringIO()
+    tmp_dir_file_name = output_file.rsplit('/', 1)
+    tmp_dir = tmp_dir_file_name[0]
+    file_name = tmp_dir_file_name[1]
+    helpers.remote_run(
+        ip=ip,
+        command=f"find {tmp_dir} -type f -name '[{file_name}]*'",
+        pty=True,
+        out_stream=out
     )
-    checksum = checksum_result.stdout.split()[0].strip()
 
-    return {
-        'image_loc': output_file,
-        'checksum': checksum,
-    }
+    out.seek(0)
+    result = []
+    for img_file in out:
+        img_file = img_file.strip()
+        if metadata["build-distro"].startswith("ipa_"):
+            ipa_image = img_file.rsplit('.', 1)[1]
+            metadata["build-ipa"] = ipa_image
+        checksum_result = helpers.remote_run(
+            ip=ip, command=f"md5sum {img_file}"
+        )
+        checksum = checksum_result.stdout.split()[0].strip()
+        result.append({
+            'image_loc': img_file,
+            'checksum': checksum,
+            'metadata': metadata,
+        })
+
+    return result
 
 
-def do_upload(ip, rc, metadata, disk_format, **build_results):
+def do_upload(ip, rc, disk_format, **build_results):
     session = helpers.get_auth_session_from_rc(rc)
     glance = chi.glance(session=session)
+    metadata = build_results['metadata']
 
-    if disk_format != 'qcow2':
+    if disk_format == 'raw':
         converted_image = None
         if build_results['image_loc'].endswith('.qcow2'):
             converted_image = build_results['image_loc'][:-6] + '.img'
@@ -157,7 +176,7 @@ def do_upload(ip, rc, metadata, disk_format, **build_results):
     image = glance.images.create(
         name='image-{}-{}-{}'.format(metadata['build-distro'],
                                      metadata['build-release'],
-                                     metadata['build-tag']
+                                     metadata['build-tag'],
                                      ),
         disk_format=disk_format,
         container_format='bare',
@@ -274,6 +293,7 @@ def main(argv=None):
         'build-repo-commit': commit,
         'build-timestamp': str(datetime.datetime.now().timestamp()),
         'build-tag': BUILD_TAG,
+        'build-ipa': "na",
     }
     if "variant_metadata" in supports["supported_variants"][args.variant]:
         metadata.update(supports["supported_variants"][args.variant]["variant_metadata"])
@@ -309,14 +329,19 @@ def main(argv=None):
     print(' - started {}...'.format(server.name))
     ip = chi_server.associate_floating_ip(server.id)
 
+    extra_params = supports["supported_distros"][args.distro].get(
+        "extra_params", ""
+    )
     build_results = do_build(ip, rc, args.build_repo, commit, metadata,
-                             variant=args.variant)
+                             variant=args.variant,
+                             extra_params=extra_params)
     pprint(build_results)
 
-    glance_results = do_upload(
-            ip, rc, metadata, args.disk_format, **build_results
-    )
-    pprint(glance_results)
+    for result in build_results:
+        glance_results = do_upload(
+                ip, rc, args.disk_format, **result
+        )
+        pprint(glance_results)
 
     print('Tearing down...')
     chi_server.delete_server(server.id)

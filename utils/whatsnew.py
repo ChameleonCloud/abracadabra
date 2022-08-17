@@ -78,3 +78,19 @@ class Newest:
                 revision = line.split('=', 1)[1].strip()
 
         return {'revision': revision}
+
+    def ipa_debian(self, release):
+        support_ipa_debian = self._get_releases("ipa_debian")
+        release_spec = support_ipa_debian[release]
+
+        path = release_spec["base_image_path"]
+        revision = 'unknown'
+        response = requests.get(
+            '{}/{}/Release'.format(path, release))
+        response.raise_for_status()
+        for line in response.text.splitlines():
+            if line.startswith('Version:'):
+                revision = line.split(':', 1)[1].strip()
+                break
+
+        return {'revision': revision}
