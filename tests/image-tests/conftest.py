@@ -170,9 +170,10 @@ def shell(request, server):
     shell = spur.SshShell(
         hostname=server["floating_ip"],
         username='cc',
-        missing_host_key=spur.ssh.MissingHostKey.accept,
+        missing_host_key=spur.ssh.MissingHostKey.warn,
         private_key_file=ssh_key_file,
         load_system_host_keys=False,
+        connect_timeout=300,
     )
     with shell:
         yield shell

@@ -8,11 +8,11 @@ import io
 import json
 import os
 from pprint import pprint
+from pyaml_env import parse_config
 import sys
 import textwrap
 import ulid
 from variant_extra_build_steps import ExtraSteps
-import yaml
 
 sys.path.append("..")
 from utils import helpers
@@ -210,8 +210,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
 
-    with open("../supports.yaml", 'r') as f:
-        supports = yaml.safe_load(f)
+    supports = parse_config("../supports.yaml")
 
     parser = argparse.ArgumentParser(description=__doc__)
 
@@ -332,6 +331,7 @@ def main(argv=None):
     extra_params = supports["supported_distros"][args.distro].get(
         "extra_params", ""
     )
+
     build_results = do_build(ip, rc, args.build_repo, commit, metadata,
                              variant=args.variant,
                              extra_params=extra_params)

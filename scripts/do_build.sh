@@ -37,7 +37,7 @@ if ! [ -z ${BUILDER_BRANCH:+x} ]; then
 fi
 
 # read yaml
-SUPPORTED_DISTROS=$(python -c "import yaml,json;s=yaml.safe_load(open('../supports.yaml','r'));print(json.dumps(s['supported_distros']))")
+SUPPORTED_DISTROS=$(python -c "from pyaml_env import parse_config;import json;s=parse_config('../supports.yaml');print(json.dumps(s['supported_distros']))")
 DISTRO_SPEC=$(echo $SUPPORTED_DISTROS | jq -r .$DISTRO)
 LOCAL_REPO=$(echo $DISTRO_SPEC | jq -r .local_repo)
 REMOTE_REPO=$(echo $DISTRO_SPEC | jq -r .repo_location)
@@ -81,7 +81,7 @@ if [ $HAS_DISK_FORMAT = true ]; then
 fi
 BUILDER_IMAGE=${BUILDER_IMAGE:-$DEFAULT_BUILDER_IMAGE}
 
-SUPPORTED_VARIANTS=$(python -c "import yaml,json;s=yaml.safe_load(open('../supports.yaml','r'));print(json.dumps(s['supported_variants']))")
+SUPPORTED_VARIANTS=$(python -c "from pyaml_env import parse_config;import json;s=parse_config('../supports.yaml');print(json.dumps(s['supported_variants']))")
 VARIANT_SPEC=$(echo $SUPPORTED_VARIANTS | jq -r .$VARIANT)
 DEFAULT_NODE_TYPE=$(echo $VARIANT_SPEC | jq -r .builder_default_node_type)
 NODE_TYPE=${NODE_TYPE:-$DEFAULT_NODE_TYPE}

@@ -2,9 +2,9 @@ supported_distros:
   centos:
     repo_location: "https://github.com/ChameleonCloud/CC-CentOS"
     local_repo: CC-CentOS
-    extra_params: "--region ${OS_REGION_NAME}"
+    extra_params: !ENV "--region ${OS_REGION_NAME}"
     releases:
-      7:
+      "7":
         prod_name: CC-CentOS7
         base_image_path: "https://cloud.centos.org/centos/7/images/"
         genericcloud_file_pattern: "^CentOS-7-x86_64-GenericCloud-(\\d[0-9_-]*).qcow2.xz$"
