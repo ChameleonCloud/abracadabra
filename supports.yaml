@@ -2,7 +2,7 @@ supported_distros:
   centos:
     repo_location: "https://github.com/ChameleonCloud/CC-CentOS"
     local_repo: CC-CentOS
-    extra_params: !ENV "--region ${OS_REGION_NAME}"
+    extra_params: "--region ${OS_REGION_NAME}"
     releases:
       "7":
         prod_name: CC-CentOS7
