@@ -147,6 +147,7 @@ def get_latest_image_objs(identifiers):
 
     result = []
     for identifier in image_objs.keys():
+        logging.info(f"Downloading image for {identifier}")
         resp_headers, content = download_image(image_objs[identifier]["obj"])
         result.append((resp_headers, content))
     return result
