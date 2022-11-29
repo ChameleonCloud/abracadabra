@@ -164,6 +164,8 @@ def main(argv=None):
 
     parser.add_argument("--site-yaml", type=str, required=True,
                         help="A yaml file with site credentials.")
+    parser.add_argument("--supports-yaml", type=str, default="/etc/chameleon_image_tools/supports.yaml",
+                        help="A yaml file with supported images.")
     parser.add_argument('--latest', type=str, nargs=3,
                         metavar=("distro", "release", "variant"),
                         help='Publish latest tested image given 3 args:<distro> <release> <variant>')
@@ -174,7 +176,7 @@ def main(argv=None):
 
     args = parser.parse_args(argv[1:])
 
-    with open("/etc/chameleon_image_tools/supports.yaml", 'r') as f:
+    with open(args.supports_yaml, 'r') as f:
         supports = yaml.safe_load(f)
 
     auth_session = helpers.get_auth_session_from_yaml(args.site_yaml)
