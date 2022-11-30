@@ -243,7 +243,6 @@ def main(argv=None):
             site = yaml.safe_load(f)
         named_images = list(glance.images.list(filters={
             'name': image_production_name,
-            'owner': site["admin_project"],
             'visibility': 'public'}
         ))
         if len(named_images) == 1:
