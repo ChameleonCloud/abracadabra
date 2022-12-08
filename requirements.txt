@@ -3,6 +3,7 @@ Jinja2
 pyaml-env==1.1.5
 python-chi
 python-swiftclient
+python-glanceclient
 python-heatclient
 python-jenkins
 cryptography

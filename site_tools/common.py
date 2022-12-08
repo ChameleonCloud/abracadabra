@@ -209,6 +209,9 @@ def find_matching_published_images(
     glance_query["name"] = image_production_name
     glance_query["status"] = "active"
 
+    # sort in order of most recent created
+    glance_query["sort"] = "created_at:desc"
+
     matching_images = list(glance_client.images.list(filters=glance_query))
     return matching_images
 
