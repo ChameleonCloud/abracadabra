@@ -176,10 +176,10 @@ def run(command, **kwargs):
     return subprocess.run(command, **runargs)
 
 
-def remote_run(ip, *args, **kwargs):
+def remote_run(ip, retries=20, delay_seconds=5, *args, **kwargs):
     tries = 0
     error = None
-    while tries < 20:
+    while tries < retries:
         try:
             with fconn.Connection(
                 ip,
@@ -192,7 +192,7 @@ def remote_run(ip, *args, **kwargs):
         except paramiko.ssh_exception.SSHException as e:
             error = e
             tries += 1
-            time.sleep(5)
+            time.sleep(delay_seconds)
     raise error
 
 
