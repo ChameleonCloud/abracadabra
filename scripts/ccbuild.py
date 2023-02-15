@@ -47,7 +47,8 @@ def do_build(ip, rc, repodir, commit, metadata, variant, extra_params):
         extra_steps(**kwargs)
 
     # init remote repo
-    helpers.remote_run(ip=ip, command='rm -rf ~/build.git')
+    # For the first command, retry for 30 minutes until SSH comes online
+    helpers.remote_run(ip=ip, command='rm -rf ~/build.git', retries=360)
     out = helpers.remote_run(
         ip=ip, command='git init --bare build.git')
     print(out)

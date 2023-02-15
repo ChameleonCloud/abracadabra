@@ -1,6 +1,10 @@
+import time
+
 import chi
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+import paramiko.ssh_exception
 from fabric import connection as fconn
 from jinja2 import Environment
 from keystoneauth1.identity import v3
@@ -172,15 +176,24 @@ def run(command, **kwargs):
     return subprocess.run(command, **runargs)
 
 
-def remote_run(ip, *args, **kwargs):
-    with fconn.Connection(
-        ip,
-        user="cc",
-        connect_kwargs={
-            "key_filename": os.environ.get('SSH_KEY_FILE', None),
-        }
-    ) as c:
-        return c.run(warn=True, *args, **kwargs)
+def remote_run(ip, retries=20, delay_seconds=5, *args, **kwargs):
+    tries = 0
+    error = None
+    while tries < retries:
+        try:
+            with fconn.Connection(
+                ip,
+                user="cc",
+                connect_kwargs={
+                    "key_filename": os.environ.get('SSH_KEY_FILE', None),
+                }
+            ) as c:
+                return c.run(warn=True, *args, **kwargs)
+        except paramiko.ssh_exception.SSHException as e:
+            error = e
+            tries += 1
+            time.sleep(delay_seconds)
+    raise error
 
 
 def get_local_rev(path):
