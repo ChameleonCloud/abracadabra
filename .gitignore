@@ -3,3 +3,7 @@
 Untitled*.ipynb
 .python-version
 .cache
+**/CC-Ubuntu/
+**/venv3/
+**/upper-constraints.txt
+**/*.egg-info/

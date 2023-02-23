@@ -1,27 +1,25 @@
-import time
-
-import chi
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
-import paramiko.ssh_exception
-from fabric import connection as fconn
-from jinja2 import Environment
-from keystoneauth1.identity import v3
-from keystoneauth1 import loading, session
 import os
 import shlex
 import smtplib
 import subprocess
-from swiftclient.client import Connection as swift_conn
-from utils import whatsnew
-import yaml
+import time
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
+import chi
+import paramiko.ssh_exception
+import yaml
+from fabric import connection as fconn
+from jinja2 import Environment
+from keystoneauth1 import loading, session
+from keystoneauth1.identity import v3
+from swiftclient.client import Connection as swift_conn
+
+from utils import whatsnew
 
 CENTRALIZED_CONTAINER_NAME = "chameleon-images"
 CENRTALIZED_CONTAINER_ACCOUNT = "AUTH_570aad8999f7499db99eae22fe9b29bb"
-CENTRALIZED_CONTAINER_URL = \
-    f"https://chi.tacc.chameleoncloud.org:7480/swift/v1/{CENRTALIZED_CONTAINER_ACCOUNT}/{CENTRALIZED_CONTAINER_NAME}"
+CENTRALIZED_CONTAINER_URL = f"https://chi.tacc.chameleoncloud.org:7480/swift/v1/{CENRTALIZED_CONTAINER_ACCOUNT}/{CENTRALIZED_CONTAINER_NAME}"
 CHAMELEON_CORE_SITES = ["uc", "tacc"]
 CENTRALIZED_STORE = "swift"
 CENTRALIZED_STORE_SITE = "tacc"
@@ -29,7 +27,7 @@ CENTRALIZED_STORE_REGION_NAME = "CHI@TACC"
 SWIFT_META_HEADER_PREFIX = "x-object-meta-"
 
 
-EMAIL_TEMPLATE = '''
+EMAIL_TEMPLATE = """
 <style type="text/css">
 @font-face {
   font-family: 'Open Sans';
@@ -97,14 +95,12 @@ a ticket on our <a href="https://chameleoncloud.org/user/help/">help desk</a>.
 
 </div>
 <br><br>
-'''
+"""
 
 
 def archival_name(prod_image_name, image):
     return "{}-{}-{}".format(
-        prod_image_name,
-        image["build-os-base-image-revision"],
-        image["build-timestamp"]
+        prod_image_name, image["build-os-base-image-revision"], image["build-timestamp"]
     )
 
 
@@ -119,59 +115,59 @@ def get_auth_session_from_rc(rc):
     Generates a Keystone Session from an OS parameter dictionary.  Dict
     key format is the same as environment variables (``OS_AUTH_URL``, et al.)
     """
-    rc_opt_keymap = {key[3:].lower().replace(
-        '_', '-'): key for key in rc if key.startswith('OS_')}
-    loader = loading.get_plugin_loader('password')
+    rc_opt_keymap = {
+        key[3:].lower().replace("_", "-"): key for key in rc if key.startswith("OS_")
+    }
+    loader = loading.get_plugin_loader("password")
     credentials = {}
     for opt in loader.get_options():
         if opt.name not in rc_opt_keymap:
             continue
-        credentials[opt.name.replace('-', '_')] = rc[rc_opt_keymap[opt.name]]
+        credentials[opt.name.replace("-", "_")] = rc[rc_opt_keymap[opt.name]]
     auth = loader.load_from_options(**credentials)
     return session.Session(auth=auth)
 
 
 def get_auth_session_from_yaml(yaml_file):
-    with open(yaml_file, 'r') as f:
+    with open(yaml_file, "r") as f:
         site = yaml.safe_load(f)
     admin_auth = v3.Password(
         auth_url=site["auth_url"],
         username=site["admin_username"],
         password=site["admin_password"],
         project_name=site["admin_project"],
-        user_domain_id='default',
-        project_domain_id='default'
+        user_domain_id="default",
+        project_domain_id="default",
     )
     return session.Session(auth=admin_auth)
 
 
 def set_chi_session_from_yaml(yaml_file):
-    with open(yaml_file, 'r') as f:
+    with open(yaml_file, "r") as f:
         site = yaml.safe_load(f)
     chi.set("auth_url", site["auth_url"])
     chi.set("username", site["admin_username"])
     chi.set("password", site["admin_password"])
     chi.set("project_name", site["admin_project"])
-    chi.set("user_domain_id", 'default')
-    chi.set("project_domain_id", 'default')
+    chi.set("user_domain_id", "default")
+    chi.set("project_domain_id", "default")
     chi.set("auth_type", "v3password")
     chi.set("region_name", site["region_name"])
 
 
 def get_rc_from_env():
-    return {k: os.environ[k]
-            for k in os.environ if k.startswith('OS_')}
+    return {k: os.environ[k] for k in os.environ if k.startswith("OS_")}
 
 
 def run(command, **kwargs):
     runargs = {
-        'stdout': subprocess.PIPE,
-        'stderr': subprocess.PIPE,
-        'universal_newlines': True,
-        'shell': False
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "universal_newlines": True,
+        "shell": False,
     }
     runargs.update(kwargs)
-    if not runargs['shell']:
+    if not runargs["shell"]:
         command = shlex.split(command)
     return subprocess.run(command, **runargs)
 
@@ -179,15 +175,14 @@ def run(command, **kwargs):
 def remote_run(ip, retries=20, delay_seconds=5, *args, **kwargs):
     tries = 0
     error = None
+    # Key is resolved manually as RSA because of a bug in paramiko which attempts to resolve it
+    # as a DSA key
+    key = paramiko.RSAKey.from_private_key_file(
+        os.environ.get("SSH_KEY_FILE", os.environ.get("HOME") + "/.ssh/id_rsa")
+    )
     while tries < retries:
         try:
-            with fconn.Connection(
-                ip,
-                user="cc",
-                connect_kwargs={
-                    "key_filename": os.environ.get('SSH_KEY_FILE', None),
-                }
-            ) as c:
+            with fconn.Connection(ip, user="cc", connect_kwargs={"pkey": key}) as c:
                 return c.run(warn=True, *args, **kwargs)
         except paramiko.ssh_exception.SSHException as e:
             error = e
@@ -197,7 +192,7 @@ def remote_run(ip, retries=20, delay_seconds=5, *args, **kwargs):
 
 
 def get_local_rev(path):
-    head = run('git rev-parse HEAD', cwd=str(path)).stdout.strip()
+    head = run("git rev-parse HEAD", cwd=str(path)).stdout.strip()
     return head
 
 
@@ -206,11 +201,11 @@ def send_notification_mail(relay, from_email, to_emails, image):
     templ = Environment().from_string(EMAIL_TEMPLATE)
     html = templ.render(image=image)
 
-    msg = MIMEMultipart('alternative')
-    msg['From'] = from_email
-    msg['Subject'] = "New Chameleon image has been released"
-    msg['To'] = ','.join(to_emails)
-    msg.attach(MIMEText(html, 'html'))
+    msg = MIMEMultipart("alternative")
+    msg["From"] = from_email
+    msg["Subject"] = "New Chameleon image has been released"
+    msg["To"] = ",".join(to_emails)
+    msg.attach(MIMEText(html, "html"))
 
     # send email
     server = smtplib.SMTP(relay, timeout=30)
@@ -219,12 +214,11 @@ def send_notification_mail(relay, from_email, to_emails, image):
 
 
 def connect_to_swift_with_admin(session, region_name):
-    swift_connection = swift_conn(session=session,
-                                  os_options={'region_name': region_name},
-                                  preauthurl=session.get_endpoint(
-                                      service_type='object-store',
-                                      region_name=region_name,
-                                      interface='public'
-                                      )
-                                  )
+    swift_connection = swift_conn(
+        session=session,
+        os_options={"region_name": region_name},
+        preauthurl=session.get_endpoint(
+            service_type="object-store", region_name=region_name, interface="public"
+        ),
+    )
     return swift_connection

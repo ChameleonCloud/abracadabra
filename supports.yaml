@@ -44,6 +44,7 @@ supported_distros:
         variants:
           - base
           - gpu
+          - arm64
   ipa_debian:
     repo_location: "https://github.com/ChameleonCloud/ironic_agent_builder"
     local_repo: CC-IPA

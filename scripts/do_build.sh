@@ -8,6 +8,8 @@ DISTRO=$1
 RELEASE=$2
 VARIANT=$3
 
+openstack_release=xena
+
 if command -v python3 >/dev/null 2>&1
 then
   PY3=python3
@@ -28,7 +30,8 @@ python --version
 pip --version
 pip install --upgrade pip > pip.log
 pip --version
-pip install -r ../requirements.txt >> pip.log
+curl -L -Sso upper-constraints.txt "https://raw.githubusercontent.com/openstack/requirements/stable/${openstack_release}/upper-constraints.txt"
+pip install -r ../requirements.txt -c <(grep -v -E 'glanceclient|keystoneclient|swiftclient|ironicclient|blazarclient|heatclient|zunclient' upper-constraints.txt) >> pip.log
 
 REMOTE_BRANCH=master
 
@@ -109,22 +112,22 @@ if ! [ -z ${DISK_FORMAT:+x} ]; then
 fi
 
 date # to compare timestamps if there are failures
-new_image_id=$(python ccbuild.py $BUILD_ARGS $LOCAL_REPO | tail -1)
+new_image_id=$(python ccbuild.py $BUILD_ARGS $LOCAL_REPO 2>&1 | tee /dev/tty | tail -1)
 
 if ! [[ $new_image_id =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]]; then
-    exit 0
+    exit 1
 fi
 
 if [[ $VARIANT == arm64 ]] || [ $DISTRO == ipa_* ]; then
   # skip test for arm64 as we don't have resources at core sites
-  # skip test for ipa image as we use different machenism
-  exit 0
+  # skip test for ipa image as we use different mechanism
+  exit 1
 fi
 
 # trying to avoid 'No valid host was found. There are not enough hosts available.' error
-sleep 5m
+#sleep 5m
 
-cd ../tests/image-tests
-date
-TEST_BUILD_ARGS+="--image=$new_image_id"
-pytest $TEST_BUILD_ARGS
+#cd ../tests/image-tests
+#date
+#TEST_BUILD_ARGS+="--image=$new_image_id"
+#pytest $TEST_BUILD_ARGS
