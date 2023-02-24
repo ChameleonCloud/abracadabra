@@ -64,10 +64,6 @@ else
   git clone -b $REMOTE_BRANCH $REMOTE_REPO $LOCAL_REPO
 fi
 
-# check the keypair exists
-nova keypair-show ${SSH_KEY_NAME:-default}
-
-
 RELEASES=$(echo $DISTRO_SPEC | jq -r .releases)
 RELEASE_SPEC=$(echo $RELEASES | jq -r .[\"$RELEASE\"])
 HAS_DEFAULT_BUILDER_IMAGE=$(echo $RELEASE_SPEC | jq 'has("default_builder_image")')
