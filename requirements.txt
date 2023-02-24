@@ -10,8 +10,9 @@ croniter
 paramiko
 requests
 ulid
+openstacksdk
 
-# test
+# functional tests of images
 pytest
 pytest-timeout
 spur
