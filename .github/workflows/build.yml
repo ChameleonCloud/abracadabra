@@ -1,0 +1,71 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      distro:
+        description: "The base distribution for the image to build"
+        required: true
+        type: choice
+        options:
+          - ubuntu
+          - centos
+      release:
+        description: "The release codename of the distro (eg. jammy, 9-stream)"
+        required: true
+        type: string
+      variant:
+        description: "The variant of the image to build"
+        required: true
+        type: choice
+        options:
+          - base
+          - gpu
+          - arm64
+          - fpga
+      builder_node:
+        description: "The node_type of the baremetal node which will be used to build the image"
+        default: compute_cascadelake_r
+        type: string
+
+env:
+  NODE_TYPE: ${{ github.event.inputs.builder_node }}
+  DISTRO: ${{ github.event.inputs.distro }}
+  RELEASE: ${{ github.event.inputs.release }}
+  VARIANT: ${{ github.event.inputs.variant }}
+  OS_ACCESS_TOKEN_TYPE: access_token
+  OS_ADDITIONAL_USER_AGENT: "[[osc-lib,2.4.2]]"
+  OS_AUTH_TYPE: v3oidcpassword
+  OS_AUTH_URL: ${{ vars.OS_AUTH_URL }}
+  OS_CLOUD: ${{ vars.OS_AUTH_URL }}
+  OS_DISCOVERY_ENDPOINT: https://auth.chameleoncloud.org/auth/realms/chameleon/.well-known/openid-configuration
+  OS_IDENTITY_API_VERSION: 3
+  OS_IDENTITY_PROVIDER: chameleon
+  OS_INTERFACE: public
+  OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+  OS_PROJECT_DOMAIN_NAME: ${{ vars.OS_PROJECT_DOMAIN_NAME }}
+  OS_PROJECT_NAME: ${{ vars.OS_PROJECT_NAME }}
+  OS_PROTOCOL: openid
+  OS_REGION_NAME: ${{ vars.OS_REGION_NAME }}
+  OS_USER_DOMAIN_ID: ${{ vars.OS_USER_DOMAIN_ID }}
+  OS_USER_DOMAIN_NAME: ${{ vars.OS_USER_DOMAIN_NAME }}
+  OS_USERNAME: ${{ secrets.OS_USERNAME }}
+  SSH_KEY_FILE: ${{ env.HOME }}/.ssh/id_rsa
+  SSH_KEY_NAME: ${{ vars.SSH_KEY_NAME }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+    - name: Generate SSH keyfile
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ${{ env.SSH_KEY_FILE }}
+    - name: Run builder
+      working-directory: ./scripts
+      run: |
+        ./do_build.sh ${{ env.DISTRO }} ${{ env.RELEASE }} ${{ env.VARIANT }}
