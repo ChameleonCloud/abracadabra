@@ -64,6 +64,7 @@ jobs:
         python-version: 3.8
     - name: Generate SSH keyfile
       run: |
+        mkdir -p $HOME/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ${{ env.SSH_KEY_FILE }}
     - name: Run builder
       working-directory: ./scripts
