@@ -50,7 +50,7 @@ env:
   OS_USER_DOMAIN_ID: ${{ vars.OS_USER_DOMAIN_ID }}
   OS_USER_DOMAIN_NAME: ${{ vars.OS_USER_DOMAIN_NAME }}
   OS_USERNAME: ${{ secrets.OS_USERNAME }}
-  SSH_KEY_FILE: ${{ GITHUB_WORKSPACE }}/.ssh/id_rsa
+  SSH_KEY_FILE: $HOME/.ssh/id_rsa
   SSH_KEY_NAME: ${{ vars.SSH_KEY_NAME }}
 
 jobs:
