@@ -1,5 +1,5 @@
 from openstack.tests import base, fakes
-from chi_image_tools import swift
+from utils import swift
 import responses
 import hashlib
 import uuid
