@@ -108,7 +108,7 @@ if ! [ -z ${DISK_FORMAT:+x} ]; then
 fi
 
 date # to compare timestamps if there are failures
-ccbuild_output=$(python ccbuild.py "$BUILD_ARGS" "$LOCAL_REPO" 2>&1)
+ccbuild_output=$(python ccbuild.py $BUILD_ARGS $LOCAL_REPO 2>&1)
 echo "$ccbuild_output"
 new_image_id=$(echo "$ccbuild_output" | tail -1)
 
