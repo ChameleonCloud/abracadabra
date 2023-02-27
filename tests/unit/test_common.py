@@ -17,6 +17,24 @@ fake_image_revision = "20230217"
 fake_build_timestamp = "1665164598.226599"
 fake_archival_image_name = "CC-Ubuntu-20.04-20230217-1665164598.226599"
 
+# The default supports.yaml should contain configurations for these images
+supported_image_names = [
+    "CC-CentOS7",
+    "CC-CentOS7-CUDA",
+    "CC-CentOS7-FPGA",
+    "CC-CentOS8-stream",
+    "CC-CentOS8-stream-CUDA",
+    "CC-Ubuntu18.04",
+    "CC-Ubuntu18.04-CUDA",
+    "CC-Ubuntu20.04",
+    "CC-Ubuntu20.04-CUDA",
+    "CC-Ubuntu20.04-ARM64",
+    "CC-Ubuntu22.04",
+    "CC-Ubuntu22.04-CUDA",
+    "CC-Ubuntu22.04-ARM64",
+    "CC-IPA-Debian11-AMD64",
+]
+
 
 class TestChiImageType(base.TestCase):
     def setUp(self):
@@ -71,3 +89,27 @@ class TestChiImageBase(base.TestCase):
             checksum_md5=None,
         )
         assert img_instance.archival_name() == fake_archival_image_name
+
+
+class TestSupportsYaml(base.TestCase):
+    def setUp(self):
+        self.TIMEOUT_SCALING_FACTOR = 10000
+        return super().setUp()
+
+    def test_config_load(self):
+        images = common.load_supported_images_from_config("supports.yaml")
+        production_names = []
+        for i in images:
+            self.assertIsNotNone(i.distro_family)
+            self.assertIsNotNone(i.distro_release)
+            self.assertIsNotNone(i.image_variant)
+
+            prod_name = i.production_name()
+            production_names.append(prod_name)
+
+            # check that each config item is a known variant
+            self.assertIn(prod_name, supported_image_names)
+
+        for sn in supported_image_names:
+            # reverse check, ensure known variant is present in the config file
+            self.assertIn(sn, production_names)

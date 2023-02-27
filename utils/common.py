@@ -1,4 +1,5 @@
 import logging
+import yaml
 
 LOG = logging.getLogger(__name__)
 
@@ -70,3 +71,33 @@ class chi_image(object):
             self.revision,
             self.build_timestamp,
         )
+
+
+def load_supported_images_from_config(config_file_path):
+    config = {}
+    with open(config_file_path, "r") as fp:
+        config = yaml.safe_load(fp)
+
+    supported_distros_dict = config.get("supported_distros")
+    supported_variants_dict = config.get("supported_variants")
+
+    supported_images = []
+
+    for distro_name, distro_values in supported_distros_dict.items():
+        for release_name, release_values in distro_values.get("releases").items():
+            for variant_name in release_values.get("variants", []):
+                variant_details = supported_variants_dict.get(variant_name)
+
+                try:
+                    image = chi_image_type(
+                        family=distro_name,
+                        release=release_name,
+                        variant=variant_name,
+                        prod_name=release_values.get("prod_name"),
+                        suffix=variant_details.get("prod_name_suffix"),
+                    )
+                except ValueError:
+                    continue
+                else:
+                    supported_images.append(image)
+    return supported_images
