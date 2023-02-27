@@ -108,10 +108,7 @@ if ! [ -z ${DISK_FORMAT:+x} ]; then
 fi
 
 date # to compare timestamps if there are failures
-ccbuild_output_file="ccbuild-output.txt"
-python ccbuild.py "$BUILD_ARGS" "$LOCAL_REPO" > "$ccbuild_output_file" 2>&1
-cat "$ccbuild_output_file"
-new_image_id=$(tail -1 < "$ccbuild_output_file")
+new_image_id=$(python ccbuild.py $BUILD_ARGS $LOCAL_REPO 2>&1 | tee /dev/tty | tail -1)
 
 if ! [[ $new_image_id =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]]; then
     exit 1
