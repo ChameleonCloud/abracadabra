@@ -40,12 +40,12 @@ class swift_image(common.chi_image):
         checksum_md5 = list_item.hash
         uuid = list_item.uuid
 
-        tmp_type = common.chi_image_type(family, release, variant, None, None)
-        try:
-            config_type = [i for i in supported_images if tmp_type == i][0]
-        except IndexError:
-            config_type = tmp_type
-            LOG.warn("could not load name from config")
+        config_type = common.chi_image_type(family, release, variant, None, None)
+        if supported_images:
+            try:
+                config_type = [i for i in supported_images if config_type == i][0]
+            except IndexError:
+                LOG.warn("could not load name from config")
 
         super().__init__(
             config_type, uuid, build_revision, build_timestamp, size_bytes, checksum_md5
