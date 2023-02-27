@@ -33,21 +33,16 @@ env:
   DISTRO: ${{ github.event.inputs.distro }}
   RELEASE: ${{ github.event.inputs.release }}
   VARIANT: ${{ github.event.inputs.variant }}
-  OS_ACCESS_TOKEN_TYPE: access_token
-  OS_ADDITIONAL_USER_AGENT: "[[osc-lib,2.4.2]]"
-  OS_AUTH_TYPE: v3oidcpassword
+  OS_AUTH_PLUGIN: ${{ vars.OS_AUTH_PLUGIN }}
   OS_AUTH_URL: ${{ vars.OS_AUTH_URL }}
-  OS_CLOUD: ${{ vars.OS_AUTH_URL }}
-  OS_DISCOVERY_ENDPOINT: https://auth.chameleoncloud.org/auth/realms/chameleon/.well-known/openid-configuration
-  OS_IDENTITY_API_VERSION: 3
-  OS_IDENTITY_PROVIDER: chameleon
-  OS_INTERFACE: public
+  OS_ENDPOINT_TYPE: ${{ vars.OS_ENDPOINT_TYPE }}
+  OS_IDENTITY_API_VERSION: ${{ vars.OS_IDENTITY_API_VERSION }}
+  OS_INTERFACE: ${{ vars.OS_INTERFACE }}
   OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
   OS_PROJECT_DOMAIN_NAME: ${{ vars.OS_PROJECT_DOMAIN_NAME }}
   OS_PROJECT_NAME: ${{ vars.OS_PROJECT_NAME }}
-  OS_PROTOCOL: openid
   OS_REGION_NAME: ${{ vars.OS_REGION_NAME }}
-  OS_USER_DOMAIN_ID: ${{ vars.OS_USER_DOMAIN_ID }}
+  OS_TENANT_NAME: ${{ vars.OS_TENANT_NAME }}
   OS_USER_DOMAIN_NAME: ${{ vars.OS_USER_DOMAIN_NAME }}
   OS_USERNAME: ${{ secrets.OS_USERNAME }}
   SSH_KEY_FILE: $HOME/.ssh/id_rsa
