@@ -34,6 +34,15 @@ class chi_image_type(object):
             getattr(other, "image_variant", None),
         )
 
+    def __hash__(self) -> int:
+        # production name, and it's components, are configurable, and don't uniquely
+        # identify a "supported image". instead, use tuple of family, release, variant
+        identifier = (self.distro_family, self.distro_release, self.image_variant)
+        return hash(identifier)
+
+    def __repr__(self) -> str:
+        return self.production_name()
+
     def production_name(self):
         if self.production_name_suffix:
             return f"{self.production_name_base}-{self.production_name_suffix}"
@@ -81,7 +90,7 @@ def load_supported_images_from_config(config_file_path):
     supported_distros_dict = config.get("supported_distros")
     supported_variants_dict = config.get("supported_variants")
 
-    supported_images = []
+    supported_images = set()
 
     for distro_name, distro_values in supported_distros_dict.items():
         for release_name, release_values in distro_values.get("releases").items():
@@ -99,5 +108,6 @@ def load_supported_images_from_config(config_file_path):
                 except ValueError:
                     continue
                 else:
-                    supported_images.append(image)
+                    supported_images.add(image)
+
     return supported_images

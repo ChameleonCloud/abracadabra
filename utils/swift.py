@@ -24,7 +24,9 @@ class swift_list_item(object):
 
 
 class swift_image(common.chi_image):
-    def __init__(self, list_item: swift_list_item, header_dict) -> None:
+    def __init__(
+        self, list_item: swift_list_item, header_dict, supported_images=[]
+    ) -> None:
         """The necessary info is split between the directory listing,
         and the per-item head request."""
 
@@ -38,24 +40,34 @@ class swift_image(common.chi_image):
         checksum_md5 = list_item.hash
         uuid = list_item.uuid
 
-        # TODO Load production name and suffix from config file
-        img_type = common.chi_image_type(family, release, variant, None, None)
+        tmp_type = common.chi_image_type(family, release, variant, None, None)
+        try:
+            config_type = [i for i in supported_images if tmp_type == i][0]
+        except IndexError:
+            config_type = tmp_type
+            LOG.warn("could not load name from config")
 
         super().__init__(
-            img_type, uuid, build_revision, build_timestamp, size_bytes, checksum_md5
+            config_type, uuid, build_revision, build_timestamp, size_bytes, checksum_md5
         )
 
 
 class swift_manager(object):
     swift_endpoint_url = common.CENTRALIZED_CONTAINER_URL
     swift_headers = {"Accept": "application/json"}
+    supported_images = None
 
-    def __init__(self, swift_endpoint_url=None, swift_headers=None) -> None:
+    def __init__(
+        self, swift_endpoint_url=None, swift_headers=None, supported_images=None
+    ) -> None:
         if swift_endpoint_url:
             self.swift_endpoint_url = swift_endpoint_url
 
         if swift_headers:
             self.swift_headers = swift_headers
+
+        if supported_images:
+            self.supported_images = supported_images
 
     def _get_image_detail(
         self, session: requests.Session, s_item: swift_list_item
@@ -64,7 +76,9 @@ class swift_manager(object):
         image_url = f"{self.swift_endpoint_url}/{image_uuid}"
         response = session.head(url=image_url, headers=self.swift_headers)
 
-        new_swift_image = swift_image(s_item, response.headers)
+        new_swift_image = swift_image(
+            s_item, response.headers, supported_images=self.supported_images
+        )
         return new_swift_image
 
     def list_images(self) -> Generator[swift_image, None, None]:

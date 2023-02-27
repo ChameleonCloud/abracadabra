@@ -103,6 +103,7 @@ class TestSupportsYaml(base.TestCase):
             self.assertIsNotNone(i.distro_family)
             self.assertIsNotNone(i.distro_release)
             self.assertIsNotNone(i.image_variant)
+            self.assertIsNotNone(i.production_name_base)
 
             prod_name = i.production_name()
             production_names.append(prod_name)
