@@ -15,10 +15,15 @@ class chi_image_type(object):
     distro_release = None
     image_variant = None
 
-    def __init__(self, family, release, variant) -> None:
+    production_name_base = None
+    production_name_suffix = None
+
+    def __init__(self, family, release, variant, prod_name=None, suffix=None) -> None:
         self.distro_family = family
         self.distro_release = release
         self.image_variant = variant
+        self.production_name_base = prod_name
+        self.production_name_suffix = suffix
 
     def __eq__(self, other: object) -> bool:
         """Compare 3 class variables to check equality"""
@@ -28,66 +33,33 @@ class chi_image_type(object):
             getattr(other, "image_variant", None),
         )
 
+    def production_name(self):
+        if self.production_name_suffix:
+            return f"{self.production_name_base}-{self.production_name_suffix}"
+        else:
+            return self.production_name_base
 
-class chi_image(chi_image_type):
+
+class chi_image(object):
     uuid = None
     name = None
     build_date = None
     size_bytes = None
     checksum_md5 = None
 
-    def gen_canonical_name(self, family, release, variant=None, build_date=None) -> str:
-        valid_tags = [t for t in [family, release, variant, build_date] if t]
-        image_name = "-".join(valid_tags)
-        if image_name:
-            return image_name
-        else:
-            raise ValueError("Could not generate canonical name")
-
     def __init__(
-        self, family, release, variant, uuid, name, build_date, size_bytes, checksum_md5
+        self,
+        image_type: chi_image_type,
+        uuid,
+        build_date,
+        size_bytes,
+        checksum_md5,
     ) -> None:
+        self.image_type = image_type
         self.uuid = uuid
         self.build_date = build_date
         self.size_bytes = size_bytes
         self.checksum_md5 = checksum_md5
 
-        self.name = name
-
-        super().__init__(family, release, variant)
-
-
-class ChameleonImage(object):
-    build_distro = None
-    build_os_base_image_revision = None
-    build_release = None
-    build_repo = None
-    build_tag = None
-
-
-def archival_name(prod_image_name, image):
-    return "{}-{}-{}".format(
-        prod_image_name,
-        image["build-os-base-image-revision"],
-        image["build-timestamp"],
-    )
-
-
-def list_supportedimages(conn):
-    """
-    Fetch a list of all supported images from glance.
-    To be "supported", they must satisfy:
-    - owned by openstack project
-    - public
-    - name matches schema from image_builder
-    - attached metadata == ???
-    """
-    images = conn.list_images()
-    return images
-
-
-def remove_prefix(str, prefix):
-    if str.startswith(prefix):
-        return str[len(prefix) :]
-    else:
-        return str
+    def archival_name(self) -> str:
+        return "{}-{}".format(self.image_type.production_name(), self.build_date)

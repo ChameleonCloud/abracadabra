@@ -1,4 +1,4 @@
-from openstack.tests import base, fakes
+from openstack.tests import base
 from utils import swift
 import responses
 import hashlib
@@ -6,22 +6,6 @@ import uuid
 
 
 BUCKET_URL = "https://chi.tacc.chameleoncloud.org:7480/swift/v1/AUTH_570aad8999f7499db99eae22fe9b29bb/chameleon-images"
-
-
-archived_image_name = "CC-Ubuntu-20.04-2022-12-06"
-current_image_name = "CC-Ubuntu-20.04"
-
-
-# Create fakes for preexisting image
-old_image_uuid = uuid.uuid4().hex
-old_image = fakes.make_fake_image(image_id=old_image_uuid)
-
-
-# Create fakes for newly available image
-new_image_uuid = uuid.uuid4().hex
-new_image = fakes.make_fake_image(
-    image_id=new_image_uuid, image_name=current_image_name
-)
 
 swift_image_uuid = uuid.uuid4()
 swift_image_uuid_string = str(swift_image_uuid)

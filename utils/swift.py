@@ -37,11 +37,10 @@ class swift_image(common.chi_image):
         checksum_md5 = list_item.hash
         uuid = list_item.uuid
 
-        name = self.gen_canonical_name(family, release, variant, build_date)
+        # TODO Load production name and suffix from config file
+        img_type = common.chi_image_type(family, release, variant, None, None)
 
-        super().__init__(
-            family, release, variant, uuid, name, build_date, size_bytes, checksum_md5
-        )
+        super().__init__(img_type, uuid, build_date, size_bytes, checksum_md5)
 
 
 class swift_manager(object):
@@ -70,7 +69,6 @@ class swift_manager(object):
             response = s.get(url=self.swift_endpoint_url, headers=self.swift_headers)
             data = response.json()
             for item in data:
-
                 # Ensure list item is valid, and not a chunk
                 try:
                     list_item = swift_list_item(item)
