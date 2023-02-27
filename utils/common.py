@@ -43,7 +43,8 @@ class chi_image_type(object):
 class chi_image(object):
     uuid = None
     name = None
-    build_date = None
+    revision = None
+    build_timestamp = None
     size_bytes = None
     checksum_md5 = None
 
@@ -51,15 +52,21 @@ class chi_image(object):
         self,
         image_type: chi_image_type,
         uuid,
-        build_date,
+        revision,
+        build_timestamp,
         size_bytes,
         checksum_md5,
     ) -> None:
         self.image_type = image_type
         self.uuid = uuid
-        self.build_date = build_date
+        self.revision = revision
+        self.build_timestamp = build_timestamp
         self.size_bytes = size_bytes
         self.checksum_md5 = checksum_md5
 
     def archival_name(self) -> str:
-        return "{}-{}".format(self.image_type.production_name(), self.build_date)
+        return "{}-{}-{}".format(
+            self.image_type.production_name(),
+            self.revision,
+            self.build_timestamp,
+        )

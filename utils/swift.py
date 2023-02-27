@@ -32,7 +32,8 @@ class swift_image(common.chi_image):
         release = header_dict.get("x-object-meta-build-release")
         variant = header_dict.get("x-object-meta-build-variant")
         size_bytes = header_dict.get("content-length")
-        build_date = header_dict.get("x-object-meta-build-timestamp")
+        build_revision = header_dict.get("x-object-meta-build-os-base-image-revision")
+        build_timestamp = header_dict.get("x-object-meta-build-timestamp")
 
         checksum_md5 = list_item.hash
         uuid = list_item.uuid
@@ -40,7 +41,9 @@ class swift_image(common.chi_image):
         # TODO Load production name and suffix from config file
         img_type = common.chi_image_type(family, release, variant, None, None)
 
-        super().__init__(img_type, uuid, build_date, size_bytes, checksum_md5)
+        super().__init__(
+            img_type, uuid, build_revision, build_timestamp, size_bytes, checksum_md5
+        )
 
 
 class swift_manager(object):

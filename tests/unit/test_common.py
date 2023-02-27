@@ -11,11 +11,11 @@ fake_production_image_name_gpu = "CC-Ubuntu-20.04-CUDA"
 fake_production_image_name_fpga = "CC-Ubuntu-20.04-FPGA"
 fake_production_image_name_arm64 = "CC-Ubuntu-20.04-ARM64"
 
-# fake_glance_image = fakes.make_fake_image(image_id=fake_image_uuid)
 fake_image_uuid = uuid.uuid4().hex
 fake_image_size_bytes = "204800000"
-fake_build_date = "2022-12-06"
-fake_archival_image_name = "CC-Ubuntu-20.04-2022-12-06"
+fake_image_revision = "20230217"
+fake_build_timestamp = "1665164598.226599"
+fake_archival_image_name = "CC-Ubuntu-20.04-20230217-1665164598.226599"
 
 
 class TestChiImageType(base.TestCase):
@@ -65,9 +65,9 @@ class TestChiImageBase(base.TestCase):
         img_instance = common.chi_image(
             self.img_type,
             uuid=fake_image_uuid,
-            build_date=fake_build_date,
+            revision=fake_image_revision,
+            build_timestamp=fake_build_timestamp,
             size_bytes=fake_image_size_bytes,
             checksum_md5=None,
         )
-        print(img_instance.archival_name())
         assert img_instance.archival_name() == fake_archival_image_name
