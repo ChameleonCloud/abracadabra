@@ -6,11 +6,12 @@ import argparse
 import logging
 
 from utils.common import load_supported_images_from_config
-from utils import swift as chi_img_swift, glance as chi_img_glance
+from utils import swift as cc_swift, glance as cc_glance
+import openstack
 
 import openstack
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger()
 
 
 def main():
@@ -18,13 +19,6 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-
-    # parser.add_argument(
-    #     "--site-yaml",
-    #     type=str,
-    #     required=True,
-    #     help="A yaml file with site credentials.",
-    # )
     parser.add_argument(
         "--supports-yaml",
         type=str,
@@ -38,39 +32,54 @@ def main():
         metavar=("distro", "release", "variant"),
         help="Publish latest tested image given 3 args:<distro> <release> <variant>",
     )
-    parser.add_argument(
-        "--ipa",
-        type=str,
-        default="na",
-        choices=["initramfs", "kernel"],
-        help='IPA metadata; if not IPA image, set to "na"; default "na"',
-    )
     parser.add_argument("--image", type=str, help="Image id to publish")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logs")
 
     args = parser.parse_args()
 
+    if args.debug:
+        # openstack.enable_logging(debug=True)
+        LOG.setLevel("DEBUG")
+
     # configuration for each image type, including production name and suffix
     configured_image_types = load_supported_images_from_config(args.supports_yaml)
-    print(configured_image_types)
 
     # initiate connection to swift for reuse, as well as applying config for naming
-    # swift_img_conn = chi_img_swift.swift_manager(
-    #     supported_images=configured_image_types
-    # )
-
-    # available_supported_images = [
-    #     i
-    #     for i in swift_img_conn.list_images()
-    #     if i.image_type in configured_image_types
-    # ]
+    swift_img_conn = cc_swift.swift_manager(supported_images=configured_image_types)
+    swift_image_generator = swift_img_conn.list_images()
+    swift_image_set = set(swift_image_generator)
 
     # Initialize connection
-    conn = openstack.connect(cloud="uc_dev_admin")
+    glance_img_conn = openstack.connect()
 
-    # for each available, supported image, check if it's in glance.
-    for i in conn.image.images():
-        tmp_img = chi_img_glance.chi_glance_image(i)
-        print(tmp_img)
+    glance_image_generator = cc_glance.filter_glance_images(
+        session=glance_img_conn.session
+    )
+    glance_image_set = set(glance_image_generator)
+
+    # list images present in swift, but not in glance
+    unsynced_images = swift_image_set - glance_image_set
+
+    def _isLatest(img, img_set):
+        return False
+
+    def _synchronizeImages(img_set):
+        for i in img_set:
+            print(f"syncing {i}")
+
+    # Select what to synchronize
+    if args.image:
+        """Sync single image by UUID."""
+        images_to_sync = [i for i in unsynced_images if i.uuid == args.image]
+    elif args.latest:
+        """Sync latest image for each supported type."""
+        images_to_sync = [i for i in unsynced_images if _isLatest(i, unsynced_images)]
+    else:
+        """Sync all versions for each supported type."""
+        images_to_sync = unsynced_images
+
+    # perform sync
+    _synchronizeImages(images_to_sync)
 
 
 if __name__ == "__main__":

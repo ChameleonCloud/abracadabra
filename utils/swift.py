@@ -96,6 +96,6 @@ class swift_manager(object):
                 try:
                     swift_image_detail = self._get_image_detail(s, list_item)
                 except ValueError as e:
-                    LOG.warning(f"Image doesn't match schema, {e}")
+                    LOG.debug(f"Skipping swift image: {e}")
                 else:
                     yield swift_image_detail
