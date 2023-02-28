@@ -63,4 +63,5 @@ jobs:
       run: |
         mkdir -p $(dirname ${{ env.SSH_KEY_FILE }})
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ${{ env.SSH_KEY_FILE }}
+        chmod 0600 ${{ env.SSH_KEY_FILE }}
         ./do_build.sh ${{ env.DISTRO }} ${{ env.RELEASE }} ${{ env.VARIANT }}
