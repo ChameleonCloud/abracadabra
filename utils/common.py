@@ -26,6 +26,9 @@ class chi_image_type(object):
         self.production_name_base = prod_name
         self.production_name_suffix = suffix
 
+        if not family or not release or not variant:
+            raise ValueError("Supplied image type missing required identifier")
+
     def __eq__(self, other: object) -> bool:
         """Compare 3 class variables to check equality"""
         return (self.distro_family, self.distro_release, self.image_variant) == (
@@ -74,12 +77,22 @@ class chi_image(object):
         self.size_bytes = size_bytes
         self.checksum_md5 = checksum_md5
 
+        if not uuid or not revision or not build_timestamp:
+            raise ValueError("Supplied image missing required identifier")
+
     def archival_name(self) -> str:
         return "{}-{}-{}".format(
             self.image_type.production_name(),
             self.revision,
             self.build_timestamp,
         )
+
+    def __hash__(self) -> int:
+        identifier = (self.image_type, self.revision, self.build_timestamp)
+        return hash(identifier)
+
+    def __repr__(self) -> str:
+        return self.archival_name()
 
 
 def load_supported_images_from_config(config_file_path):
