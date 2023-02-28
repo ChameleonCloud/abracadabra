@@ -178,7 +178,7 @@ def remote_run(ip, retries=20, delay_seconds=5, *args, **kwargs):
     # Key is resolved manually as RSA because of a bug in paramiko which attempts to resolve it
     # as a DSA key
     key = paramiko.RSAKey.from_private_key_file(
-        os.environ.get("SSH_KEY_FILE", os.environ.get("HOME") + "/.ssh/id_rsa")
+        os.path.expanduser(os.environ.get("SSH_KEY_FILE", "~/.ssh/id_rsa"))
     )
     while tries < retries:
         try:

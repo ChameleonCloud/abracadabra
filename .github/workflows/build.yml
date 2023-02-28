@@ -46,7 +46,7 @@ env:
   OS_TENANT_NAME: ${{ vars.OS_TENANT_NAME }}
   OS_USER_DOMAIN_NAME: ${{ vars.OS_USER_DOMAIN_NAME }}
   OS_USERNAME: ${{ secrets.OS_USERNAME }}
-  SSH_KEY_FILE: $HOME/.ssh/id_rsa
+  SSH_KEY_FILE: ~/.ssh/id_rsa
   SSH_KEY_NAME: ${{ vars.SSH_KEY_NAME }}
 
 jobs:
@@ -58,11 +58,9 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.8
-    - name: Generate SSH keyfile
-      run: |
-        mkdir -p $HOME/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ${{ env.SSH_KEY_FILE }}
     - name: Run builder
       working-directory: ./scripts
       run: |
+        mkdir -p $(dirname ${{ env.SSH_KEY_FILE }})
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ${{ env.SSH_KEY_FILE }}
         ./do_build.sh ${{ env.DISTRO }} ${{ env.RELEASE }} ${{ env.VARIANT }}
