@@ -34,6 +34,7 @@ env:
   RELEASE: ${{ github.event.inputs.release }}
   VARIANT: ${{ github.event.inputs.variant }}
   OS_AUTH_PLUGIN: ${{ vars.OS_AUTH_PLUGIN }}
+  OS_AUTH_TYPE: ${{ vars.OS_AUTH_TYPE }}
   OS_AUTH_URL: ${{ vars.OS_AUTH_URL }}
   OS_ENDPOINT_TYPE: ${{ vars.OS_ENDPOINT_TYPE }}
   OS_IDENTITY_API_VERSION: ${{ vars.OS_IDENTITY_API_VERSION }}
