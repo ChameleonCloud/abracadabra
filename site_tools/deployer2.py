@@ -55,7 +55,6 @@ def main():
     glance_image_set = set(glance_image_generator)
 
     # list images present in swift, but not in glance
-    # TODO: not correctly removing images found in glance
     unsynced_images = swift_image_set.difference(glance_image_set)
 
     def _isLatest(img, img_set):
