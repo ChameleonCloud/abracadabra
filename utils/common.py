@@ -61,6 +61,16 @@ class chi_image(object):
     size_bytes = None
     checksum_md5 = None
 
+    def _identifier(self):
+        """Define tuple to use for hashing and comparison"""
+        return (
+            self.image_type.distro_family,
+            self.image_type.distro_release,
+            self.image_type.image_variant,
+            self.revision,
+            self.build_timestamp,
+        )
+
     def __init__(
         self,
         image_type: chi_image_type,
@@ -87,10 +97,17 @@ class chi_image(object):
             self.build_timestamp,
         )
 
+    # To use a class in Set comparisons, both __hash__ and __eq__ must be defined.
+    # If __eq__ returns true for two objects, __hash__ must return the same value for both.
     def __hash__(self) -> int:
-        identifier = (self.image_type, self.revision, self.build_timestamp)
-        return hash(identifier)
+        return hash(self._identifier())
 
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, chi_image) and self._identifier() == other._identifier()
+        )
+
+    # Define __repr__ to make logs and debugging more human readable
     def __repr__(self) -> str:
         return self.archival_name()
 
