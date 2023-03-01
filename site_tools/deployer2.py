@@ -9,7 +9,6 @@ from utils.common import load_supported_images_from_config
 from utils import swift as cc_swift, glance as cc_glance
 import openstack
 
-import openstack
 
 LOG = logging.getLogger()
 
@@ -50,22 +49,17 @@ def main():
     swift_image_set = set(swift_image_generator)
 
     # Initialize connection
-    glance_img_conn = openstack.connect()
+    glance_img_conn = cc_glance.glance_manager(supported_images=configured_image_types)
 
-    glance_image_generator = cc_glance.filter_glance_images(
-        session=glance_img_conn.session
-    )
+    glance_image_generator = glance_img_conn.filter_glance_images()
     glance_image_set = set(glance_image_generator)
 
     # list images present in swift, but not in glance
-    unsynced_images = swift_image_set - glance_image_set
+    # TODO: not correctly removing images found in glance
+    unsynced_images = swift_image_set.difference(glance_image_set)
 
     def _isLatest(img, img_set):
         return False
-
-    def _synchronizeImages(img_set):
-        for i in img_set:
-            print(f"syncing {i}")
 
     # Select what to synchronize
     if args.image:
@@ -79,7 +73,8 @@ def main():
         images_to_sync = unsynced_images
 
     # perform sync
-    _synchronizeImages(images_to_sync)
+    for img in images_to_sync:
+        glance_img_conn.sync_image_to_glance(img)
 
 
 if __name__ == "__main__":
