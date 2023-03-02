@@ -1,14 +1,8 @@
-import logging
 import yaml
 
-LOG = logging.getLogger(__name__)
+from oslo_log import log as logging
 
-OBJECT_STORE_URL = "https://chi.tacc.chameleoncloud.org:7480/swift/v1"
-CENRTALIZED_CONTAINER_ACCOUNT = "AUTH_570aad8999f7499db99eae22fe9b29bb"
-CENTRALIZED_CONTAINER_NAME = "chameleon-images"
-CENTRALIZED_CONTAINER_URL = (
-    f"{OBJECT_STORE_URL}/{CENRTALIZED_CONTAINER_ACCOUNT}/{CENTRALIZED_CONTAINER_NAME}"
-)
+LOG = logging.getLogger(__name__)
 
 
 class chi_image_type(object):
@@ -16,17 +10,25 @@ class chi_image_type(object):
     distro_release = None
     image_variant = None
 
-    production_name_base = None
-    production_name_suffix = None
+    production_name_base = ""
+    production_name_suffix = ""
 
-    def __init__(self, family, release, variant, prod_name=None, suffix=None) -> None:
-        self.distro_family = family
-        self.distro_release = release
-        self.image_variant = variant
+    def __init__(
+        self,
+        distro_family,
+        distro_release,
+        image_variant,
+        prod_name="",
+        suffix="",
+        **kwargs,
+    ) -> None:
+        self.distro_family = distro_family
+        self.distro_release = distro_release
+        self.image_variant = image_variant
         self.production_name_base = prod_name
         self.production_name_suffix = suffix
 
-        if not family or not release or not variant:
+        if not distro_family or not distro_release or not image_variant:
             raise ValueError("Supplied image type missing required identifier")
 
     def __eq__(self, other: object) -> bool:
@@ -54,12 +56,17 @@ class chi_image_type(object):
 
 
 class chi_image(object):
+    # common fields to all images
     uuid = None
-    name = None
-    revision = None
-    build_timestamp = None
     size_bytes = None
     checksum_md5 = None
+
+    # per-image provenance fields
+    base_image_revision = None
+    build_timestamp = None
+    build_repo = None
+    build_repo_commit = None
+    build_tag = None
 
     def _identifier(self):
         """Define tuple to use for hashing and comparison"""
@@ -67,7 +74,7 @@ class chi_image(object):
             self.image_type.distro_family,
             self.image_type.distro_release,
             self.image_type.image_variant,
-            self.revision,
+            self.base_image_revision,
             self.build_timestamp,
         )
 
@@ -75,25 +82,32 @@ class chi_image(object):
         self,
         image_type: chi_image_type,
         uuid,
-        revision,
+        base_image_revision,
         build_timestamp,
         size_bytes,
-        checksum_md5,
+        checksum_md5=None,
+        build_repo=None,
+        build_repo_commit=None,
+        build_tag=None,
+        **kwargs,
     ) -> None:
         self.image_type = image_type
         self.uuid = uuid
-        self.revision = revision
+        self.base_image_revision = base_image_revision
         self.build_timestamp = build_timestamp
         self.size_bytes = size_bytes
         self.checksum_md5 = checksum_md5
+        self.build_repo = build_repo
+        self.build_repo_commit = build_repo_commit
+        self.build_tag = build_tag
 
-        if not uuid or not revision or not build_timestamp:
+        if not uuid or not base_image_revision or not build_timestamp:
             raise ValueError("Supplied image missing required identifier")
 
     def archival_name(self) -> str:
         return "{}-{}-{}".format(
             self.image_type.production_name(),
-            self.revision,
+            self.base_image_revision,
             self.build_timestamp,
         )
 
@@ -129,9 +143,9 @@ def load_supported_images_from_config(config_file_path):
 
                 try:
                     image = chi_image_type(
-                        family=distro_name,
-                        release=release_name,
-                        variant=variant_name,
+                        distro_family=distro_name,
+                        distro_release=release_name,
+                        image_variant=variant_name,
                         prod_name=release_values.get("prod_name"),
                         suffix=variant_details.get("prod_name_suffix"),
                     )

@@ -8,43 +8,16 @@ from glanceclient.v2.client import Client as v2Client
 import openstack
 from openstack.connection import Connection
 from openstack import exceptions
-from glanceclient.exc import HTTPNotFound
+from glanceclient.exc import HTTPNotFound, HTTPConflict
+
+from utils.swift import swift_image
+from utils.constants import (
+    IMAGE_TYPE_MAPPINGS,
+    IMAGE_INSTANCE_MAPPINGS,
+    map_attribute_value,
+)
 
 LOG = logging.getLogger(__name__)
-
-
-class chi_glance_image(common.chi_image):
-    """Define methods to map between glance images and canonical representation"""
-
-    def __init__(self, image: Image, supported_images=[]) -> None:
-        uuid = image.id
-        size_bytes = image.size
-        checksum_md5 = image.checksum
-        revision = image.get("build-os-base-image-revision")
-        build_timestamp = image.get("build-timestamp")
-
-        # TODO: load base image name and suffix from config file
-        config_type = common.chi_image_type(
-            image.get("build-distro"),
-            image.get("build-release"),
-            image.get("build-variant"),
-            None,
-            None,
-        )
-        if supported_images:
-            try:
-                config_type = [i for i in supported_images if config_type == i][0]
-            except IndexError:
-                LOG.warn("could not load name from config")
-
-        super().__init__(
-            config_type,
-            uuid,
-            revision,
-            build_timestamp,
-            size_bytes,
-            checksum_md5,
-        )
 
 
 class glance_manager(object):
@@ -52,7 +25,7 @@ class glance_manager(object):
     client: v2Client = None
     conn: Connection = None
 
-    supported_images = None
+    supported_images = []
 
     def __init__(self, session: ksSession = None, supported_images=None) -> None:
         if session:
@@ -65,6 +38,41 @@ class glance_manager(object):
 
         if supported_images:
             self.supported_images = supported_images
+
+    def glance_to_chi_image(self, glance_image: Image) -> common.chi_image:
+        img_type_attributes = {}
+        for field in IMAGE_TYPE_MAPPINGS:
+            map_attribute_value(
+                field, "glance", glance_image, "chi", img_type_attributes
+            )
+
+        img_instance_attributes = {}
+        for field in IMAGE_INSTANCE_MAPPINGS:
+            map_attribute_value(
+                field, "glance", glance_image, "chi", img_instance_attributes
+            )
+
+        image_type = common.chi_image_type(**img_type_attributes)
+        image_type = [i for i in self.supported_images if image_type == i][0]
+
+        chi_image = common.chi_image(image_type, **img_instance_attributes)
+        return chi_image
+
+    def chi_to_glance_image(self, c_image: common.chi_image) -> Image:
+        img_type_attributes = {}
+        for field in IMAGE_TYPE_MAPPINGS:
+            map_attribute_value(
+                field, "chi", c_image.image_type, "glance", img_type_attributes
+            )
+
+        img_instance_attributes = {}
+        for field in IMAGE_INSTANCE_MAPPINGS:
+            map_attribute_value(
+                field, "chi", c_image, "glance", img_instance_attributes
+            )
+        # glance images don't separate "type" and "per-image" attributes
+        glance_image = Image(**img_type_attributes, **img_instance_attributes)
+        return glance_image
 
     def filter_glance_images(self, filters={}):
         # query_params = {
@@ -86,15 +94,54 @@ class glance_manager(object):
 
         for glance_img in images_generator:
             try:
-                glance_img = chi_glance_image(
-                    glance_img, supported_images=self.supported_images
-                )
+                chi_image = self.glance_to_chi_image(glance_image=glance_img)
             except ValueError as e:
                 LOG.debug(f"Skipping glance image: {e}")
             else:
-                yield glance_img
+                yield chi_image
 
-    def sync_image_to_glance(self, image: chi_glance_image):
+    def import_image_from_swift(self, image: swift_image):
+        # Build the image attributes
+        new_image_id = str(image.uuid)
+
+        image_attrs = {
+            "name": image.archival_name(),
+            "id": new_image_id,
+            "disk_format": "qcow2",
+            "container_format": "bare",
+            "visibility": "public",
+        }
+
+        # # create placeholder in glance DB
+        try:
+            glance_image: Image
+            glance_image = self.client.images.create(**image_attrs)
+        except HTTPConflict:
+            LOG.warning(
+                f"uuid {new_image_id} is already present, moving to import step"
+            )
+            glance_image_id = new_image_id
+        else:
+            glance_image_id = glance_image.id
+
+        # # Url where glance can download the image
+        uri = image.uri
+        try:
+            self.client.images.image_import(
+                image_id=glance_image_id,
+                method="web-download",
+                uri=uri,
+            )
+        except HTTPNotFound:
+            LOG.warning(
+                f"image {glance_image_id} not found, still creating. Retry next run"
+            )
+        except HTTPConflict:
+            LOG.warning(
+                f"image {glance_image_id} not queued, may have been uploaded in a different thread"
+            )
+
+    def sync_image_to_glance(self, image: swift_image):
         """This method takes an image with a publicly visible url in swift,
         and commands glance to download it."""
 
@@ -104,17 +151,21 @@ class glance_manager(object):
 
         # Check if exact image already uploaded
         try:
-            glance_image_by_uuid = self.client.images.get(image_id=new_image_uuid)
+            glance_image_by_uuid: Image = self.client.images.get(
+                image_id=new_image_uuid
+            )
         except HTTPNotFound:
             pass
         else:
-            if glance_image_by_uuid:
+            if glance_image_by_uuid and glance_image_by_uuid.status == "Active":
                 LOG.warning(f"Not syncing {image}, UUID is already present")
                 return
+            elif glance_image_by_uuid and glance_image_by_uuid.status == "Queued":
+                LOG.warning(f"Skipping image create, moving to import")
 
         # Check if image already uploaded and archived
         try:
-            filters = {"name": new_image_archival_name}
+            filters = {"name": new_image_archival_name, "status": "active"}
             glance_image_by_archival_name = list(
                 self.client.images.list(filters=filters)
             )
@@ -140,7 +191,7 @@ class glance_manager(object):
                 )
                 if (
                     image.build_timestamp == current_production_image.build_timestamp
-                ) and (image.revision == current_production_image.revision):
+                ) and (image.base_image_revision == current_production_image.revision):
                     LOG.warning(f"Not syncing {image}, already uploaded as production")
                     return
             elif len(glance_image_by_production_name) > 1:
@@ -151,3 +202,4 @@ class glance_manager(object):
 
         # checks passed, upload image with archival name to avoid conflicts
         LOG.warning(f"uploading archival image: {image}")
+        self.import_image_from_swift(image=image)

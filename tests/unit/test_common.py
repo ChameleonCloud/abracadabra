@@ -43,9 +43,9 @@ class TestChiImageType(base.TestCase):
 
     def _get_image_variant(self, variant, suffix):
         return common.chi_image_type(
-            family=fake_distro_family,
-            release=fake_distro_release,
-            variant=variant,
+            distro_family=fake_distro_family,
+            distro_release=fake_distro_release,
+            image_variant=variant,
             prod_name=fake_production_image_name_base,
             suffix=suffix,
         )
@@ -71,16 +71,16 @@ class TestChiImageBase(base.TestCase):
     def setUp(self):
         self.TIMEOUT_SCALING_FACTOR = 10000
         self.img_type = common.chi_image_type(
-            family=fake_distro_family,
-            release=fake_distro_release,
-            variant=None,
+            distro_family=fake_distro_family,
+            distro_release=fake_distro_release,
+            image_variant=None,
             prod_name=fake_production_image_name_base,
             suffix=None,
         )
         return super().setUp()
 
     def test_archival_name(self):
-        img_instance = common.chi_image(
+        img_instance = common.chi_image_instance(
             self.img_type,
             uuid=fake_image_uuid,
             revision=fake_image_revision,

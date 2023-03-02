@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Generator
-from utils import common
+from utils import common, constants
 import uuid
 import requests
 
@@ -24,8 +24,14 @@ class swift_list_item(object):
 
 
 class swift_image(common.chi_image):
+    uri = None
+
     def __init__(
-        self, list_item: swift_list_item, header_dict, supported_images=[]
+        self,
+        list_item: swift_list_item,
+        header_dict: Mapping,
+        source_uri=None,
+        supported_images=[],
     ) -> None:
         """The necessary info is split between the directory listing,
         and the per-item head request."""
@@ -36,6 +42,10 @@ class swift_image(common.chi_image):
         size_bytes = header_dict.get("content-length")
         build_revision = header_dict.get("x-object-meta-build-os-base-image-revision")
         build_timestamp = header_dict.get("x-object-meta-build-timestamp")
+
+        # TODO get all x-object-meta fields
+
+        self.uri = source_uri
 
         checksum_md5 = list_item.hash
         uuid = list_item.uuid
@@ -53,7 +63,7 @@ class swift_image(common.chi_image):
 
 
 class swift_manager(object):
-    swift_endpoint_url = common.CENTRALIZED_CONTAINER_URL
+    swift_endpoint_url = constants.CENTRALIZED_CONTAINER_URL
     swift_headers = {"Accept": "application/json"}
     supported_images = None
 
@@ -77,13 +87,18 @@ class swift_manager(object):
         response = session.head(url=image_url, headers=self.swift_headers)
 
         new_swift_image = swift_image(
-            s_item, response.headers, supported_images=self.supported_images
+            list_item=s_item,
+            header_dict=response.headers,
+            source_uri=image_url,
+            supported_images=self.supported_images,
         )
         return new_swift_image
 
     def list_images(self) -> Generator[swift_image, None, None]:
-        with requests.Session() as s:
-            response = s.get(url=self.swift_endpoint_url, headers=self.swift_headers)
+        with requests.Session() as session:
+            response = session.get(
+                url=self.swift_endpoint_url, headers=self.swift_headers
+            )
             data = response.json()
             for item in data:
                 # Ensure list item is valid, and not a chunk
@@ -94,7 +109,7 @@ class swift_manager(object):
 
                 # Ensure only images with matching metadata are returned
                 try:
-                    swift_image_detail = self._get_image_detail(s, list_item)
+                    swift_image_detail = self._get_image_detail(session, list_item)
                 except ValueError as e:
                     LOG.debug(f"Skipping swift image: {e}")
                 else:
