@@ -1,6 +1,7 @@
 import yaml
 
 from oslo_log import log as logging
+from utils import constants
 
 LOG = logging.getLogger(__name__)
 
@@ -155,3 +156,23 @@ def load_supported_images_from_config(config_file_path):
                     supported_images.add(image)
 
     return supported_images
+
+
+def map_attribute_value(field: constants.ImageField, s_type, s_obj, d_type, d_obj):
+    def _resolve(obj, spec):
+        """Attempt to get value from class or dict"""
+        try:
+            # if dict-like
+            value = obj[spec]
+        except (TypeError, KeyError):
+            # if class-like
+            value = getattr(obj, spec, None)
+        return value
+
+    # programatically fetch key names from a namedtuple
+    # and map value between source and dest dictionary
+    source_attr_key = getattr(field, s_type)
+    dest_attr_key = getattr(field, d_type)
+    if source_attr_key and dest_attr_key:
+        source_attr_value = _resolve(s_obj, source_attr_key)
+        d_obj[dest_attr_key] = source_attr_value

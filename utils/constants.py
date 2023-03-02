@@ -29,17 +29,7 @@ IMAGE_INSTANCE_MAPPINGS = {
     ImageField(
         "build_repo_commit", "build-repo-commit", "x-object-meta-build-repo-commit"
     ),
-    ImageField("uuid", "id", None),
-    ImageField("size_bytes", "size", None),
-    ImageField("checksum_md5", "checksum", None),
+    ImageField("size_bytes", "size", "content-length"),
+    ImageField("uuid", "id", "uuid"),
+    ImageField("checksum_md5", "checksum", "checksum_md5"),
 }
-
-
-def map_attribute_value(field: ImageField, s_type, s_obj, d_type, d_obj):
-    # programatically fetch key names from a namedtuple
-    # and map value between source and dest dictionary
-    source_attr_key = getattr(field, s_type)
-    dest_attr_key = getattr(field, d_type)
-
-    source_attr_value = getattr(s_obj, source_attr_key, None)
-    d_obj[dest_attr_key] = source_attr_value

@@ -10,12 +10,12 @@ from openstack.connection import Connection
 from openstack import exceptions
 from glanceclient.exc import HTTPNotFound, HTTPConflict
 
-from utils.swift import swift_image
+from utils.swift import chi_image_swift
 from utils.constants import (
     IMAGE_TYPE_MAPPINGS,
     IMAGE_INSTANCE_MAPPINGS,
-    map_attribute_value,
 )
+from utils.common import map_attribute_value
 
 LOG = logging.getLogger(__name__)
 
@@ -75,21 +75,6 @@ class glance_manager(object):
         return glance_image
 
     def filter_glance_images(self, filters={}):
-        # query_params = {
-        #     "visibility": "public",
-        #     "name": "something",
-        #     "owner": "something",
-        #     "status": "something",
-        #     "tag": "something",
-        # }
-
-        # TODO we can't filter based on these, as they are not 'tags'
-        # query_params = {
-        #     "build-distro": "ubuntu",
-        #     "build-release": "focal",
-        #     "build-variant": "base",
-        # }
-
         images_generator = self.client.images.list(**filters)
 
         for glance_img in images_generator:
@@ -100,7 +85,7 @@ class glance_manager(object):
             else:
                 yield chi_image
 
-    def import_image_from_swift(self, image: swift_image):
+    def import_image_from_swift(self, image: chi_image_swift):
         # Build the image attributes
         new_image_id = str(image.uuid)
 
@@ -141,7 +126,7 @@ class glance_manager(object):
                 f"image {glance_image_id} not queued, may have been uploaded in a different thread"
             )
 
-    def sync_image_to_glance(self, image: swift_image):
+    def sync_image_to_glance(self, image: chi_image_swift):
         """This method takes an image with a publicly visible url in swift,
         and commands glance to download it."""
 

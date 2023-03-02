@@ -2,8 +2,13 @@ from collections.abc import Mapping, Generator
 from utils import common, constants
 import uuid
 import requests
-
-import logging
+from oslo_log import log as logging
+from utils.constants import (
+    SWIFT_META_HEADER_PREFIX,
+    IMAGE_INSTANCE_MAPPINGS,
+    IMAGE_TYPE_MAPPINGS,
+)
+from utils.common import map_attribute_value
 
 LOG = logging.getLogger(__name__)
 
@@ -23,7 +28,7 @@ class swift_list_item(object):
         self.uuid = uuid.UUID(hex=self.chunk_name)
 
 
-class swift_image(common.chi_image):
+class chi_image_swift(common.chi_image):
     uri = None
 
     def __init__(
@@ -34,32 +39,34 @@ class swift_image(common.chi_image):
         supported_images=[],
     ) -> None:
         """The necessary info is split between the directory listing,
-        and the per-item head request."""
+        and the per-item head request, assemble into one mapping."""
+        attributes = {}
 
-        family = header_dict.get("x-object-meta-build-distro")
-        release = header_dict.get("x-object-meta-build-release")
-        variant = header_dict.get("x-object-meta-build-variant")
-        size_bytes = header_dict.get("content-length")
-        build_revision = header_dict.get("x-object-meta-build-os-base-image-revision")
-        build_timestamp = header_dict.get("x-object-meta-build-timestamp")
-
-        # TODO get all x-object-meta fields
-
+        # make a copy so we can append and override
+        attributes.update(header_dict)
+        attributes["checksum_md5"] = list_item.hash
+        attributes["uuid"] = list_item.uuid
         self.uri = source_uri
 
-        checksum_md5 = list_item.hash
-        uuid = list_item.uuid
+        # convert to consistent naming convention
+        img_type_attributes = {}
+        for field in IMAGE_TYPE_MAPPINGS:
+            map_attribute_value(field, "swift", attributes, "chi", img_type_attributes)
 
-        config_type = common.chi_image_type(family, release, variant, None, None)
+        config_type = common.chi_image_type(**img_type_attributes)
         if supported_images:
             try:
                 config_type = [i for i in supported_images if config_type == i][0]
             except IndexError:
                 LOG.warn("could not load name from config")
 
-        super().__init__(
-            config_type, uuid, build_revision, build_timestamp, size_bytes, checksum_md5
-        )
+        img_instance_attributes = {}
+        for field in IMAGE_INSTANCE_MAPPINGS:
+            map_attribute_value(
+                field, "swift", attributes, "chi", img_instance_attributes
+            )
+
+        super().__init__(config_type, **img_instance_attributes)
 
 
 class swift_manager(object):
@@ -81,12 +88,12 @@ class swift_manager(object):
 
     def _get_image_detail(
         self, session: requests.Session, s_item: swift_list_item
-    ) -> swift_image:
+    ) -> chi_image_swift:
         image_uuid = s_item.uuid
         image_url = f"{self.swift_endpoint_url}/{image_uuid}"
         response = session.head(url=image_url, headers=self.swift_headers)
 
-        new_swift_image = swift_image(
+        new_swift_image = chi_image_swift(
             list_item=s_item,
             header_dict=response.headers,
             source_uri=image_url,
@@ -94,7 +101,7 @@ class swift_manager(object):
         )
         return new_swift_image
 
-    def list_images(self) -> Generator[swift_image, None, None]:
+    def list_images(self) -> Generator[chi_image_swift, None, None]:
         with requests.Session() as session:
             response = session.get(
                 url=self.swift_endpoint_url, headers=self.swift_headers
