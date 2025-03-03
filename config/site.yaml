@@ -1,4 +1,8 @@
 ---
 region_name: CHI_DEV_UC
 image_container: pdmars-image-test-1
+image_type: qcow2
+image_prefix: testing_
 scope: prod
+object_store_cloud: chi_uc
+image_store_cloud: uc_dev
