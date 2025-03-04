@@ -1,15 +1,13 @@
 import argparse
 import datetime
-import json
 import logging
+import requests
 import tempfile
 import yaml
 
 import openstack
 
 from itertools import islice
-
-from swiftclient.client import Connection as SwiftConnection
 
 
 logging.basicConfig(level=logging.INFO)
@@ -35,40 +33,34 @@ def get_openstack_connection(cloud_name):
     return openstack.connect(cloud=cloud_name)
 
 
-def setup_swift_connection(openstack_conn,
-                           use_object_store_creds=False):
-    auth_token = openstack_conn.auth_token
-    storage_url = openstack_conn.object_store.get_endpoint()
-    swift_conn = SwiftConnection(
-        preauthtoken=auth_token if use_object_store_creds else None,
-        preauthurl=storage_url,
-        auth_version='3'
-    )
-    return swift_conn
-
-
-def get_current_value(connection, base_container, scope):
-    _, current = connection.get_object(base_container, scope + "/current")
-    return current.strip()
+def get_current_value(storage_url, base_container, scope):
+    url = f"{storage_url}/{base_container}/{scope}/current"
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Error getting current value: {response.content}")
+    logging.debug(f"Current value: {response.text.strip()}")
+    return response.text.strip()
 
 
 def get_available_images(
-        connection,
+        storage_url,
         base_container,
         scope,
         current,
         image_type):
-    logging.debug("Checking available images...")
     available_images = []
 
-    current_path = scope + "/" + current
-    current_objects = connection.object_store.objects(base_container,
-                                                      prefix=current_path,
-                                                      delimiter="/")
+    current_path = f"{scope}/{current}"
+    url = f"{storage_url}/{base_container}?prefix={current_path}"
+    logging.info(f"Checking available images at {url}...")
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Error getting available images: {response.content}")
 
-    for obj in islice(current_objects, 1, None):
-        object_name = obj.name.split("/")[-1]
-        logging.debug(f"Checking object: {object_name}")
+    current_objects = response.text.splitlines()
+    logging.debug(f"Current objects: {current_objects}")
+    for object in islice(current_objects, 1, None):
+        object_name = object.split("/")[-1]
         if object_name.endswith(".manifest"):
             name = object_name.rstrip(".manifest")
             available_images.append(
@@ -78,12 +70,12 @@ def get_available_images(
     return available_images
 
 
-def get_site_images(connection, filter_public_visibility):
-    logging.debug("Checking site images...")
+def get_site_images(connection):
+    logging.info("Checking public site images...")
     images = [
         i.name
         for i in connection.image.images(
-            visibility="public" if filter_public_visibility else None
+            visibility="public"
         )
     ]
     return images
@@ -96,23 +88,25 @@ def should_sync_image(image_disk_name, site_images, current):
         image_properties = image.properties
         logging.debug(f"Image properties: {image_properties}")
         image_current_value = image_properties.get("current", None)
-        logging.info(f"Image {image_disk_name} current value: {image_current_value}")
+        logging.debug(f"Image {image_disk_name} current value: {image_current_value}")
         if image_current_value is not None and image_current_value == current:
             logging.info(f"Image {image_disk_name} is already current.")
             return False
     return True
 
 
-def download_image_to_temp_file(swift_conn, container_path, image_disk_name):
-    logging.debug(f"Downloading image {image_disk_name} from {container_path}.")
-    _, image_contents = swift_conn.get_object(container_path,
-                                              image_disk_name,
-                                              resp_chunk_size=65536)
+def download_object_to_file(storage_url, path, file_name):
+    url = f"{storage_url}/{path}/{file_name}"
+    response = requests.get(url, stream=True)
+
+    if response.status_code != 200:
+        raise Exception(f"Error downloading object {file_name}: {response.content}")
+
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        for chunk in image_contents:
+        for chunk in response.iter_content(chunk_size=65536):
             temp_file.write(chunk)
             temp_file.flush()
-    logging.debug(f"Downloaded image to {temp_file.name}.")
+    logging.debug(f"Downloaded object to {temp_file.name}.")
     return temp_file
 
 
@@ -157,11 +151,17 @@ def archive_image(image_connection, image_disk_name, new_image):
     logging.info(f"Renamed image {new_image.id} to {image_disk_name}.")
 
 
-def sync_image(object_connection,
+def get_manifest_data(manifest_url):
+    response = requests.get(manifest_url)
+    if response.status_code != 200:
+        raise Exception(f"Error downloading object {manifest_url}: {response.content}")
+    return response.json()
+
+
+def sync_image(storage_url,
                image_connection,
                image,
                current=None,
-               use_object_store_creds=False,
                image_prefix="_testing",
                image_type="qcow2",
                dry_run=False):
@@ -170,27 +170,18 @@ def sync_image(object_connection,
         logging.info(f"DRY RUN: Syncing image {image.name}.")
     else:
         logging.info(f"Syncing image {image.name}.")
-
-        logging.info(f"Downloading image {image.name} from {image.container_path}.")
-        manifest_object = object_connection.object_store.download_object (
-            container=image.container_path,
-            obj=image.manifest_name
-        )
-        manifest_data = json.loads(manifest_object.decode('utf-8'))
+        logging.debug(f"Downloading image {image.name} from {image.container_path}.")
+        manifest_url = f"{storage_url}/{image.container_path}/{image.manifest_name}"
+        manifest_data = get_manifest_data(manifest_url)
         manifest_data["current"] = current
         logging.debug(f"Downloaded {image.name} manifest: {manifest_data}, downloading image file.")
 
         try:
-            # we need to use swift directly here because the images may be too large to fit
-            # in memory as they are downloaded and the swift client supports chunked downloads
-            swift_conn = setup_swift_connection(object_connection,
-                                                use_object_store_creds=use_object_store_creds)
-            temp_file = download_image_to_temp_file(
-                swift_conn,
+            temp_file = download_object_to_file(
+                storage_url,
                 image.container_path,
                 image.disk_name
             )
-            swift_conn.close()
 
             glance_image = upload_image_to_glance(
                 image_connection,
@@ -215,12 +206,11 @@ def sync_image(object_connection,
 
 
 
-def do_sync(object_connection,
+def do_sync(storage_url,
             image_connection,
             available_images,
             site_images,
             current=None,
-            use_object_store_creds=False,
             image_prefix="testing_",
             image_type="qcow2",
             dry_run=False):
@@ -228,11 +218,10 @@ def do_sync(object_connection,
     for available_image in available_images:
         if should_sync_image(available_image.disk_name, site_images, current):
             sync_image(
-                object_connection,
+                storage_url,
                 image_connection,
                 available_image,
                 current=current,
-                use_object_store_creds=use_object_store_creds,
                 image_prefix=image_prefix,
                 image_type=image_type,
                 dry_run=dry_run
@@ -253,13 +242,6 @@ if __name__ == "__main__":
                         help="Perform a dry run without making any changes.")
     # TODO(pdmars): add a force sync flag that overrides the current check
 
-    # TODO(pdmars): probably just have these for testing
-    # final version will be public only containers, but for now I'm using my account
-    parser.add_argument("--use-object-store-creds", action="store_true",
-                        help="Use creds with the object store for the image store.")
-    parser.add_argument("--filter-public-visibility", action="store_true",
-                        help="The visibility to filter when listing images.")
-
     args = parser.parse_args()
 
     if args.dry_run:
@@ -277,19 +259,20 @@ if __name__ == "__main__":
     scope = site.get("scope", "prod")
     image_type = site.get("image_type", "qcow2")
     image_prefix = site.get("image_prefix", "testing_")
-    object_store_cloud = site.get("object_store_cloud", "chi_uc") # TODO: change default
     image_store_cloud = site.get("image_store_cloud", "uc_dev") # TODO: change default
+    storage_url = site.get("object_store_url")
+    if storage_url is None:
+        raise Exception("The object_store_url is required in your site.yaml config!")
 
     logging.debug(f"Using base image container/scope: {base_container}/{scope}")
-    object_connection = get_openstack_connection(object_store_cloud)
     image_connection = get_openstack_connection(image_store_cloud)
 
-    current = get_current_value(object_connection, base_container, scope)
+    current = get_current_value(storage_url, base_container, scope)
     logging.info(f"Current image: {current}")
 
     # TODO(pdmars): first pass we assume we will release all images, add filters
     # for different sites later that may not need all images
-    available_images = get_available_images(object_connection,
+    available_images = get_available_images(storage_url,
                                             base_container,
                                             scope,
                                             current,
@@ -299,16 +282,15 @@ if __name__ == "__main__":
         [str(i) for i in available_images])
     )
 
-    site_images = get_site_images(image_connection, args.filter_public_visibility)
+    site_images = get_site_images(image_connection)
     logging.debug(f"Site Images: {site_images}")
 
     do_sync(
-        object_connection,
+        storage_url,
         image_connection,
         available_images,
         site_images,
         current=current,
-        use_object_store_creds=args.use_object_store_creds,
         image_prefix=image_prefix,
         image_type=image_type,
         dry_run=args.dry_run
