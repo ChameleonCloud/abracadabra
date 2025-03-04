@@ -130,27 +130,49 @@ def upload_image_to_glance(image_connection,
     return new_image
 
 
-def archive_image(image_connection, image_disk_name, new_image):
-    # TODO: if things go sideways in here we may be in a bad state, add more
-    # error handling.
-    existing_images = list(image_connection.image.images(name=image_disk_name))
-    # TODO: rename the old image: this should only ever be 1. assert that instead?
-    if len(existing_images) > 0:
-        logging.info(f"Renaming existing image {image_disk_name}.")
-        current_datetime = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-        for existing_image in existing_images:
-            build_timestamp = existing_image.properties.get("build-timestamp",
-                                                            current_datetime)
-            build_datetime = datetime.strptime(build_timestamp, "%Y-%m-%d %H:%M:%S.%f")
-            archive_date = build_datetime.strftime("%Y%m%d_%H%M%S")
-            image_connection.image.update_image(
-                existing_image.id,
-                name=f"{image_disk_name}_{archive_date}"
-            )
-            logging.info(f"Renamed image {existing_image.name} " + \
-                         f"to {existing_image.name}_{archive_date}.")
-    image_connection.image.update_image(new_image.id, name=image_disk_name)
-    logging.info(f"Renamed image {new_image.id} to {image_disk_name}.")
+def archive_image(image):
+    logging.info(f"Renaming existing image {image.name}.")
+    archive_date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    build_timestamp = image.properties.get("build-timestamp")
+    if build_timestamp is not None:
+        build_datetime = datetime.strptime(build_timestamp, "%Y-%m-%d %H:%M:%S.%f")
+        archive_date = build_datetime.strftime("%Y%m%d_%H%M%S")
+
+    image_connection.image.update_image(
+        image.id,
+        name=f"{image.name}_{archive_date}"
+    )
+
+    logging.info(f"Renamed image {image.name} " + \
+                 f"to {image.name}_{archive_date}.")
+
+
+def promote_image(image_connection, image_disk_name, new_image):
+    existing_images = list(
+        image_connection.image.images(
+            name=image_disk_name,
+            visibility="public"
+        )
+    )
+    logging.info(f"Promoting image {image_disk_name}.")
+    if len(existing_images) == 0:
+        image_connection.image.update_image(new_image.id,
+                                            name=image_disk_name,
+                                            visibility="public")
+    elif len(existing_images) == 1:
+        archive_image(existing_images[0])
+        image_connection.image.update_image(new_image.id,
+                                            name=image_disk_name,
+                                            visibility="public")
+    else:
+        # we could make this a consistency check that is run upfront so we
+        # don't bother with the rest of this process if something is in this
+        # state
+        error = "There should never be more than 1 public image with the " + \
+                f"same name: {image_disk_name}! Manual intervention required."
+        logging.error(error)
+
+    logging.info(f"Promoted image {new_image.name}.")
 
 
 def get_manifest_data(manifest_url):
@@ -199,7 +221,7 @@ def sync_image(storage_url,
             except Exception as delete_error:
                 logging.error(f"Error deleting temporary file: {delete_error}. Manual cleanup required.")
 
-            archive_image(image_connection, image.disk_name, glance_image)
+            promote_image(image_connection, image.disk_name, glance_image)
 
         except Exception as e:
             logging.error(f"Error syncing image {image.disk_name}: {e}. Manual intervention required.")
