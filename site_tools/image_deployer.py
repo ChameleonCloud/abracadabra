@@ -123,7 +123,7 @@ def upload_image_to_glance(image_connection,
         new_image = image_connection.create_image(name=image_prefix_name,
                                                   disk_format=disk_format,
                                                   container_format="bare",
-                                                  visibility="public",
+                                                  visibility="private",
                                                   data=image_data,
                                                   **manifest_data)
     logging.info(f"Uploaded image {new_image.name}.")
@@ -137,8 +137,12 @@ def archive_image(image_connection, image_disk_name, new_image):
     # TODO: rename the old image: this should only ever be 1. assert that instead?
     if len(existing_images) > 0:
         logging.info(f"Renaming existing image {image_disk_name}.")
-        archive_date = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+        current_datetime = datetime.datetime.now().strftime("%Y%m%d_%H%M")
         for existing_image in existing_images:
+            build_timestamp = existing_image.properties.get("build-timestamp",
+                                                            current_datetime)
+            build_datetime = datetime.strptime(build_timestamp, "%Y-%m-%d %H:%M:%S.%f")
+            archive_date = build_datetime.strftime("%Y%m%d_%H%M%S")
             image_connection.image.update_image(
                 existing_image.id,
                 name=f"{image_disk_name}_{archive_date}"
