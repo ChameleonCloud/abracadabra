@@ -118,14 +118,12 @@ def upload_image_to_glance(image_connection,
                            manifest_data):
     image_prefix_name = image_prefix + image_disk_name
 
-    # TODO: need admin creds to make visibility public instead of private
-    # right now I am using app creds that just have a member role
     logging.info(f"Uploading image {image_disk_name} to Glance.")
     with open(image_file_name, "rb") as image_data:
         new_image = image_connection.create_image(name=image_prefix_name,
                                                   disk_format=disk_format,
                                                   container_format="bare",
-                                                  visibility="private",
+                                                  visibility="public",
                                                   data=image_data,
                                                   **manifest_data)
     logging.info(f"Uploaded image {new_image.name}.")
