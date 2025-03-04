@@ -1,5 +1,4 @@
 ---
-region_name: CHI_DEV_UC
 image_container: pdmars-image-test-1
 image_type: qcow2
 image_prefix: testing_
