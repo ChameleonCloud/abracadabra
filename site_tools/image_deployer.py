@@ -10,9 +10,6 @@ import openstack
 from itertools import islice
 
 
-logging.basicConfig(level=logging.INFO)
-
-
 class Image:
     def __init__(self, name, type, base_container, scope, current_path):
         self.name = name
@@ -51,8 +48,8 @@ def get_available_images(
     available_images = []
 
     current_path = f"{scope}/{current}"
-    url = f"{storage_url}/{base_container}?prefix={current_path}"
-    logging.info(f"Checking available images at {url}...")
+    url = f"{storage_url}/{base_container}/?prefix={current_path}"
+    logging.debug(f"Checking available images at {url}...")
     response = requests.get(url)
     if response.status_code != 200:
         raise Exception(f"Error getting available images: {response.content}")
@@ -71,7 +68,7 @@ def get_available_images(
 
 
 def get_site_images(connection):
-    logging.info("Checking public site images...")
+    logging.debug("Checking public site images...")
     images = [
         i.name
         for i in connection.image.images(
@@ -83,14 +80,14 @@ def get_site_images(connection):
 
 def should_sync_image(image_disk_name, site_images, current):
     if image_disk_name in site_images:
-        logging.info(f"Image {image_disk_name} already in site images.")
+        logging.debug(f"Image {image_disk_name} already in site images.")
         image = image_connection.image.find_image(image_disk_name)
         image_properties = image.properties
         logging.debug(f"Image properties: {image_properties}")
         image_current_value = image_properties.get("current", None)
         logging.debug(f"Image {image_disk_name} current value: {image_current_value}")
         if image_current_value is not None and image_current_value == current:
-            logging.info(f"Image {image_disk_name} is already current.")
+            logging.debug(f"Image {image_disk_name} is already current.")
             return False
     return True
 
@@ -118,7 +115,7 @@ def upload_image_to_glance(image_connection,
                            manifest_data):
     image_prefix_name = image_prefix + image_disk_name
 
-    logging.info(f"Uploading image {image_disk_name} to Glance.")
+    logging.debug(f"Uploading image {image_disk_name} to Glance.")
     with open(image_file_name, "rb") as image_data:
         new_image = image_connection.create_image(name=image_prefix_name,
                                                   disk_format=disk_format,
@@ -126,44 +123,57 @@ def upload_image_to_glance(image_connection,
                                                   visibility="private",
                                                   data=image_data,
                                                   **manifest_data)
-    logging.info(f"Uploaded image {new_image.name}.")
+    logging.debug(f"Uploaded image {new_image.name}.")
     return new_image
 
 
-def archive_image(image):
-    logging.info(f"Renaming existing image {image.name}.")
-    archive_date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+def get_image_build_timestamp(image):
     build_timestamp = image.properties.get("build-timestamp")
-    if build_timestamp is not None:
-        build_datetime = datetime.strptime(build_timestamp, "%Y-%m-%d %H:%M:%S.%f")
-        archive_date = build_datetime.strftime("%Y%m%d_%H%M%S")
+    if build_timestamp is None:
+        error = f"Unable to find build-timestamp on image {image.id}, " + \
+                "using the current date instead."
+        logging.error(error)
+        return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    return datetime.datetime.strptime(build_timestamp, "%Y-%m-%d %H:%M:%S.%f")
 
+
+def archive_image(image):
+    logging.debug(f"Renaming existing image {image.name}.")
+    archive_date = get_image_build_timestamp(image)
     image_connection.image.update_image(
         image.id,
         name=f"{image.name}_{archive_date}"
     )
 
-    logging.info(f"Renamed image {image.name} " + \
-                 f"to {image.name}_{archive_date}.")
+    archived_name = f"{image.name}_{archive_date}"
+    logging.debug(f"Renamed image {image.name} to {archived_name}.")
 
 
-def promote_image(image_connection, image_disk_name, new_image):
+def promote_image(image_connection, image_name, image_disk_name, new_image):
+    build_timestamp = get_image_build_timestamp(new_image)
     existing_images = list(
         image_connection.image.images(
             name=image_disk_name,
             visibility="public"
         )
     )
-    logging.info(f"Promoting image {image_disk_name}.")
+    logging.debug(f"Promoting image {image_disk_name}.")
     if len(existing_images) == 0:
         image_connection.image.update_image(new_image.id,
                                             name=image_disk_name,
                                             visibility="public")
+        logging.info(f"Image {image_name} updated to {new_image.id} : " +
+                     f"{build_timestamp}")
     elif len(existing_images) == 1:
         archive_image(existing_images[0])
         image_connection.image.update_image(new_image.id,
                                             name=image_disk_name,
                                             visibility="public")
+        old_image_id = existing_images[0].id
+        old_build_timestamp = get_image_build_timestamp(existing_images[0])
+        logging.info(f"Image {image_name} updated to {new_image.id} : " +
+                     f"{build_timestamp} from {old_image_id}:" +
+                     f"{old_build_timestamp}")
     else:
         # we could make this a consistency check that is run upfront so we
         # don't bother with the rest of this process if something is in this
@@ -172,7 +182,7 @@ def promote_image(image_connection, image_disk_name, new_image):
                 f"same name: {image_disk_name}! Manual intervention required."
         logging.error(error)
 
-    logging.info(f"Promoted image {new_image.name}.")
+
 
 
 def get_manifest_data(manifest_url):
@@ -221,13 +231,10 @@ def sync_image(storage_url,
             except Exception as delete_error:
                 logging.error(f"Error deleting temporary file: {delete_error}. Manual cleanup required.")
 
-            promote_image(image_connection, image.disk_name, glance_image)
+            promote_image(image_connection, image.name, image.disk_name, glance_image)
 
         except Exception as e:
             logging.error(f"Error syncing image {image.disk_name}: {e}. Manual intervention required.")
-
-        logging.info(f"Image {image.name} synced.")
-
 
 
 def do_sync(storage_url,
@@ -238,19 +245,33 @@ def do_sync(storage_url,
             image_prefix="testing_",
             image_type="qcow2",
             dry_run=False):
-    logging.info(f"Syncing images (dry_run={dry_run})...")
+
+
+    images_to_sync = []
     for available_image in available_images:
         if should_sync_image(available_image.disk_name, site_images, current):
-            sync_image(
-                storage_url,
-                image_connection,
-                available_image,
-                current=current,
-                image_prefix=image_prefix,
-                image_type=image_type,
-                dry_run=dry_run
-            )
-    logging.info("Sync completed.")
+            images_to_sync.append(available_image)
+
+    num_available_images = len(available_images)
+    num_images_to_sync = len(images_to_sync)
+    num_images_to_skip = num_available_images - num_images_to_sync
+    logging.info(f"Found {num_available_images} available images. " +
+                 f"Already have {num_images_to_skip} images. " +
+                 "Syncing {num_images_to_sync} images: {images_to_sync}".format(
+                     num_images_to_sync=num_images_to_sync,
+                     images_to_sync=[str(i) for i in images_to_sync]))
+
+    for image_to_sync in images_to_sync:
+        sync_image(
+            storage_url,
+            image_connection,
+            image_to_sync,
+            current=current,
+            image_prefix=image_prefix,
+            image_type=image_type,
+            dry_run=dry_run
+        )
+    logging.info("Sync complete.")
 
 
 if __name__ == "__main__":
@@ -264,9 +285,14 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run",
                         action="store_true",
                         help="Perform a dry run without making any changes.")
+    parser.add_argument("--debug", action="store_true",
+                        help="Enable debug logging")
     # TODO(pdmars): add a force sync flag that overrides the current check
 
     args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(level=log_level)
 
     if args.dry_run:
         logging.info("Dry run mode enabled. No changes will be made.")
@@ -292,7 +318,7 @@ if __name__ == "__main__":
     image_connection = get_openstack_connection(image_store_cloud)
 
     current = get_current_value(storage_url, base_container, scope)
-    logging.info(f"Current image: {current}")
+    logging.info(f"Using latest image release: {current}")
 
     # TODO(pdmars): first pass we assume we will release all images, add filters
     # for different sites later that may not need all images
