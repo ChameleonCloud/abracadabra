@@ -23,9 +23,21 @@ object_store_url: https://chi.uc.chameleoncloud.org:7480/swift/v1/{the account w
 The image container for production images is stored in a central
 object store and should use the scope `prod` by default.
 
+The image container name for production is `chameleon-images`.
+
 Individual sites can select an `image_type` of `raw` or `qcow2`
 for the image format to deploy. All images should have both
 formats in the object store.
+
+The `image_prefix` will be added to images when they are initially
+pushed to Glance. After pushing the image, any images with an
+existing name will be archived with their build date and then
+the `image_prefix` will be removed from the newly pushed images.
+
+The `image_store_cloud` is the location of the site with Glance
+where the images should be pushed to. This should contain the
+credentials for your cloud in a `clouds.yaml` file for the
+OpenStack client.
 
 After installing the dependencies, you can run the tool as follows:
 ```
