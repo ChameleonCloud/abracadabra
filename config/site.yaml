@@ -1,0 +1,7 @@
+---
+image_container: chameleon-images
+image_type: qcow2
+image_prefix: testing_
+scope: prod
+image_store_cloud: uc_dev
+object_store_url:
