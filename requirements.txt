@@ -15,3 +15,7 @@ ulid
 pytest
 pytest-timeout
 spur
+
+# image_deployer
+pyyaml
+openstacksdk>1.0.1
