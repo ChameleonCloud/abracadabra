@@ -309,7 +309,7 @@ if __name__ == "__main__":
     scope = site.get("scope", "prod")
     image_type = site.get("image_type", "qcow2")
     image_prefix = site.get("image_prefix", "testing_")
-    image_store_cloud = site.get("image_store_cloud", "uc_dev") # TODO: change default
+    image_store_cloud = site.get("image_store_cloud", "uc_dev")
     storage_url = site.get("object_store_url")
     if storage_url is None:
         raise Exception("The object_store_url is required in your site.yaml config!")
