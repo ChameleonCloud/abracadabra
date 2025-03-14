@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import json
 import logging
 import requests
 import tempfile
@@ -35,34 +36,40 @@ def get_current_value(storage_url, base_container, scope):
     response = requests.get(url)
     if response.status_code != 200:
         raise Exception(f"Error getting current value: {response.content}")
-    logging.debug(f"Current value: {response.text.strip()}")
-    return response.text.strip()
+    return json.loads(response.text.strip())
 
 
 def get_available_images(
         storage_url,
         base_container,
         scope,
-        current,
+        current_values,
         image_type):
     available_images = []
 
-    current_path = f"{scope}/{current}"
-    url = f"{storage_url}/{base_container}/?prefix={current_path}"
-    logging.debug(f"Checking available images at {url}...")
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise Exception(f"Error getting available images: {response.content}")
+    for image_name in current_values.keys():
+        current = current_values[image_name]
+        current_path = f"{scope}/versions/{current}"
+        url = f"{storage_url}/{base_container}/?prefix={current_path}"
+        logging.debug(f"Checking available images at {url}...")
+        response = requests.get(url)
+        if response.status_code != 200:
+            raise Exception("Error getting available images: " +
+                            f"{response.content}")
 
-    current_objects = response.text.splitlines()
-    logging.debug(f"Current objects: {current_objects}")
-    for object in islice(current_objects, 1, None):
-        object_name = object.split("/")[-1]
-        if object_name.endswith(".manifest"):
-            name = object_name.rstrip(".manifest")
-            available_images.append(
-                Image(name, image_type, base_container, scope, current_path)
-            )
+        current_objects = response.text.splitlines()
+        logging.debug(f"Current objects: {current_objects}")
+        for object in islice(current_objects, 1, None):
+            object_name = object.split("/")[-1]
+            if object_name.endswith(image_name + ".manifest"):
+                name = object_name.rstrip(".manifest")
+                available_images.append(
+                    Image(name,
+                          image_type,
+                          base_container,
+                          scope,
+                          current_path)
+                )
 
     return available_images
 
@@ -241,7 +248,7 @@ def do_sync(storage_url,
             image_connection,
             available_images,
             site_images,
-            current=None,
+            current_values={},
             image_prefix="testing_",
             image_type="qcow2",
             dry_run=False):
@@ -249,6 +256,7 @@ def do_sync(storage_url,
 
     images_to_sync = []
     for available_image in available_images:
+        current = current_values[available_image.name]
         if should_sync_image(available_image.disk_name, site_images, current):
             images_to_sync.append(available_image)
 
@@ -266,7 +274,7 @@ def do_sync(storage_url,
             storage_url,
             image_connection,
             image_to_sync,
-            current=current,
+            current=current_values[image_to_sync.name],
             image_prefix=image_prefix,
             image_type=image_type,
             dry_run=dry_run
@@ -317,15 +325,15 @@ if __name__ == "__main__":
     logging.debug(f"Using base image container/scope: {base_container}/{scope}")
     image_connection = get_openstack_connection(image_store_cloud)
 
-    current = get_current_value(storage_url, base_container, scope)
-    logging.info(f"Using latest image release: {current}")
+    current_values = get_current_value(storage_url, base_container, scope)
+    logging.debug(f"Using latest image release: {current_values}")
 
     # TODO(pdmars): first pass we assume we will release all images, add filters
     # for different sites later that may not need all images
     available_images = get_available_images(storage_url,
                                             base_container,
                                             scope,
-                                            current,
+                                            current_values,
                                             image_type)
 
     logging.debug("Available Central Images: {}".format(
@@ -340,7 +348,7 @@ if __name__ == "__main__":
         image_connection,
         available_images,
         site_images,
-        current=current,
+        current_values=current_values,
         image_prefix=image_prefix,
         image_type=image_type,
         dry_run=args.dry_run
