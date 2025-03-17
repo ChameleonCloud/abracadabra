@@ -313,7 +313,7 @@ if __name__ == "__main__":
     with open(args.site_yaml, "r") as f:
         site = yaml.safe_load(f)
 
-    base_container = site.get("image_container", "chameleon-images")
+    base_container = site.get("image_container", "chameleon-supported-images")
     scope = site.get("scope", "prod")
     image_type = site.get("image_type", "qcow2")
     image_prefix = site.get("image_prefix", "testing_")
