@@ -12,7 +12,7 @@ The script requires a site.yaml file configured with the following
 settings:
 ```
 ---
-image_container: chameleon-images
+image_container: chameleon-supported-images
 image_type: qcow2
 image_prefix: testing_
 scope: prod
@@ -23,7 +23,7 @@ object_store_url: https://chi.uc.chameleoncloud.org:7480/swift/v1/{the account w
 The image container for production images is stored in a central
 object store and should use the scope `prod` by default.
 
-The image container name for production is `chameleon-images`.
+The image container name is `chameleon-supported-images`.
 
 Individual sites can select an `image_type` of `raw` or `qcow2`
 for the image format to deploy. All images should have both
